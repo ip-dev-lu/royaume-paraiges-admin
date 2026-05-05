@@ -115,6 +115,7 @@ function WeeklyCalendar({
         {calendarWeeks.map((week) => {
           // Use Monday of this week to find the matching period
           const monday = week[0];
+          if (!monday) return null;
           const period = findPeriodForDate(monday, availablePeriods);
           const isSelected = period
             ? selectedPeriods.includes(period.period_identifier)

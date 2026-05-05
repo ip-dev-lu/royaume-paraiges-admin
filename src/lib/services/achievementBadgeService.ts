@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/client";
+import {
+  achievementBadgeSchema,
+  achievementBadgeUpdateSchema,
+} from "@/lib/schemas/achievement.schema";
 
 export type AchievementCriterionType =
   | "first_order"
@@ -41,8 +45,8 @@ export interface AchievementBadgePayload {
 
 export async function listAchievementBadges(): Promise<AchievementBadge[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("badge_types") as any)
+  const { data, error } = await supabase
+    .from("badge_types")
     .select(
       "id, slug, name, description, lore, icon, rarity, category, criterion_type, criterion_params, evaluation_mode, archived_at, created_at",
     )
@@ -55,8 +59,8 @@ export async function listAchievementBadges(): Promise<AchievementBadge[]> {
 
 export async function getAchievementBadge(id: number): Promise<AchievementBadge | null> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("badge_types") as any)
+  const { data, error } = await supabase
+    .from("badge_types")
     .select(
       "id, slug, name, description, lore, icon, rarity, category, criterion_type, criterion_params, evaluation_mode, archived_at, created_at",
     )
@@ -69,21 +73,23 @@ export async function getAchievementBadge(id: number): Promise<AchievementBadge 
 export async function createAchievementBadge(
   payload: AchievementBadgePayload,
 ): Promise<AchievementBadge> {
+  achievementBadgeSchema.parse(payload);
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("badge_types") as any)
-    .insert({
-      slug: payload.slug,
-      name: payload.name,
-      description: payload.description ?? null,
-      lore: payload.lore ?? null,
-      icon: payload.icon ?? null,
-      rarity: payload.rarity,
-      category: "achievement",
-      criterion_type: payload.criterion_type,
-      criterion_params: payload.criterion_params,
-      evaluation_mode: payload.evaluation_mode,
-    })
+  const insertPayload = {
+    slug: payload.slug,
+    name: payload.name,
+    description: payload.description ?? null,
+    lore: payload.lore ?? null,
+    icon: payload.icon ?? null,
+    rarity: payload.rarity,
+    category: "achievement" as const,
+    criterion_type: payload.criterion_type,
+    criterion_params: payload.criterion_params,
+    evaluation_mode: payload.evaluation_mode,
+  };
+  const { data, error } = await supabase
+    .from("badge_types")
+    .insert(insertPayload as never)
     .select()
     .single();
   if (error) throw error;
@@ -94,12 +100,11 @@ export async function updateAchievementBadge(
   id: number,
   payload: Partial<AchievementBadgePayload>,
 ): Promise<AchievementBadge> {
+  achievementBadgeUpdateSchema.parse(payload);
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("badge_types") as any)
-    .update({
-      ...payload,
-    })
+  const { data, error } = await supabase
+    .from("badge_types")
+    .update({ ...payload } as never)
     .eq("id", id)
     .select()
     .single();
@@ -112,9 +117,9 @@ export async function updateAchievementBadge(
  */
 export async function archiveAchievementBadge(id: number): Promise<void> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("badge_types") as any)
-    .update({ archived_at: new Date().toISOString() })
+  const { error } = await supabase
+    .from("badge_types")
+    .update({ archived_at: new Date().toISOString() } as never)
     .eq("id", id);
   if (error) throw error;
 }

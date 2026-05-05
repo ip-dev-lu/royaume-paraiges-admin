@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2, Pencil, BookOpen } from "lucide-react";
-import { getLevelThresholds, updateLevelThreshold } from "@/lib/services/contentService";
+import { getLevelThresholds, getXpPerEuro, updateLevelThreshold } from "@/lib/services/contentService";
 import type { LevelThreshold } from "@/lib/services/contentService";
 import { levelToCoefficient, levelToRankName } from "@/lib/services/levelService";
 import { useToast } from "@/components/ui/use-toast";
@@ -35,16 +35,21 @@ import { useToast } from "@/components/ui/use-toast";
 export default function StorytellingPage() {
   const { toast } = useToast();
   const [levels, setLevels] = useState<LevelThreshold[]>([]);
+  const [xpPerEuro, setXpPerEuro] = useState<number>(10);
   const [loading, setLoading] = useState(true);
   const [editingLevel, setEditingLevel] = useState<LevelThreshold | null>(null);
   const [loreText, setLoreText] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchLevels = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getLevelThresholds();
+        const [data, ratio] = await Promise.all([
+          getLevelThresholds(),
+          getXpPerEuro(),
+        ]);
         setLevels(data);
+        setXpPerEuro(ratio);
       } catch (error) {
         toast({
           variant: "destructive",
@@ -55,7 +60,7 @@ export default function StorytellingPage() {
         setLoading(false);
       }
     };
-    fetchLevels();
+    fetchData();
   }, [toast]);
 
   const handleSave = async () => {
@@ -116,18 +121,30 @@ export default function StorytellingPage() {
                 <TableHead>Nom</TableHead>
                 <TableHead className="w-[120px]">Rang</TableHead>
                 <TableHead className="w-[100px] text-right">XP requis</TableHead>
+                <TableHead className="w-[100px] text-right">Δ XP</TableHead>
+                <TableHead className="w-[110px] text-right">Équiv. €</TableHead>
                 <TableHead className="w-[110px] text-right">Coef. PdB</TableHead>
                 <TableHead>Lore</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {levels.map((level) => (
+              {levels.map((level, index) => {
+                const previousXp = index > 0 ? (levels[index - 1]?.xp_required ?? 0) : 0;
+                const xpDelta = level.xp_required - previousXp;
+                const equivalentEuros = xpPerEuro > 0 ? level.xp_required / xpPerEuro : 0;
+                return (
                 <TableRow key={level.id}>
                   <TableCell className="font-bold">{level.level}</TableCell>
                   <TableCell className="font-medium">{level.name}</TableCell>
                   <TableCell className="text-muted-foreground">{levelToRankName(level.level)}</TableCell>
                   <TableCell className="text-right tabular-nums">{level.xp_required.toLocaleString("fr-FR")}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {index === 0 ? "—" : `+${xpDelta.toLocaleString("fr-FR")}`}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {equivalentEuros.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums font-medium">
                     × {levelToCoefficient(level.level).toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   </TableCell>
@@ -147,7 +164,8 @@ export default function StorytellingPage() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

@@ -42,10 +42,9 @@ export async function getActiveTemplates(): Promise<CouponTemplate[]> {
 
 export async function createTemplate(template: CouponTemplateInsert) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from("coupon_templates") as any)
-    .insert(template)
+  const { data, error } = await supabase
+    .from("coupon_templates")
+    .insert(template as never)
     .select()
     .single();
 
@@ -55,10 +54,13 @@ export async function createTemplate(template: CouponTemplateInsert) {
 
 export async function updateTemplate(id: number, template: CouponTemplateUpdate) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from("coupon_templates") as any)
-    .update({ ...template, updated_at: new Date().toISOString() })
+  const payload: CouponTemplateUpdate = {
+    ...template,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from("coupon_templates")
+    .update(payload as never)
     .eq("id", id)
     .select()
     .single();
@@ -69,10 +71,13 @@ export async function updateTemplate(id: number, template: CouponTemplateUpdate)
 
 export async function toggleTemplateActive(id: number, isActive: boolean) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from("coupon_templates") as any)
-    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+  const payload: CouponTemplateUpdate = {
+    is_active: isActive,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from("coupon_templates")
+    .update(payload as never)
     .eq("id", id)
     .select()
     .single();
@@ -83,11 +88,7 @@ export async function toggleTemplateActive(id: number, isActive: boolean) {
 
 export async function deleteTemplate(id: number) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase
-    .from("coupon_templates") as any)
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("coupon_templates").delete().eq("id", id);
 
   if (error) throw error;
 }

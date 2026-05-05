@@ -73,11 +73,15 @@ export function Header({ mobile = false, onMenuClick }: HeaderProps) {
           <span className="font-medium">
             {profile?.first_name || profile?.email || "Admin"}
           </span>
-          {profile?.role && roleConfig[profile.role] && (
-            <Badge variant="outline" className={`text-xs ${roleConfig[profile.role].className}`}>
-              {roleConfig[profile.role].label}
-            </Badge>
-          )}
+          {(() => {
+            const config = profile?.role ? roleConfig[profile.role] : undefined;
+            if (!config) return null;
+            return (
+              <Badge variant="outline" className={`text-xs ${config.className}`}>
+                {config.label}
+              </Badge>
+            );
+          })()}
         </div>
       </div>
     </header>

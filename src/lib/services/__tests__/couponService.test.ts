@@ -61,10 +61,10 @@ describe("getCoupons", () => {
     const result = await getCoupons();
 
     expect(result.data).toHaveLength(2);
-    expect(result.data[0].profiles).toEqual(profiles[0]);
-    expect(result.data[0].coupon_templates).toEqual(templates[0]);
-    expect(result.data[1].profiles).toEqual(profiles[1]);
-    expect(result.data[1].coupon_templates).toBeNull();
+    expect(result.data[0]?.profiles).toEqual(profiles[0]);
+    expect(result.data[0]?.coupon_templates).toEqual(templates[0]);
+    expect(result.data[1]?.profiles).toEqual(profiles[1]);
+    expect(result.data[1]?.coupon_templates).toBeNull();
     expect(result.count).toBe(2);
   });
 
@@ -165,6 +165,9 @@ describe("getCoupons", () => {
 });
 
 describe("createManualCoupon", () => {
+  const USER_1 = "11111111-1111-4111-8111-111111111111";
+  const ADMIN_1 = "22222222-2222-4222-8222-222222222222";
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -173,20 +176,20 @@ describe("createManualCoupon", () => {
     mockSupa.setRpcResult({ data: { id: 1 }, error: null });
 
     await createManualCoupon({
-      customerId: "user-1",
+      customerId: USER_1,
       templateId: 5,
       notes: "Geste commercial",
-      adminId: "admin-1",
+      adminId: ADMIN_1,
     });
 
     expect(mockSupa.client.rpc).toHaveBeenCalledWith("create_manual_coupon", {
-      p_customer_id: "user-1",
+      p_customer_id: USER_1,
       p_template_id: 5,
       p_amount: null,
       p_percentage: null,
       p_expires_at: null,
       p_notes: "Geste commercial",
-      p_admin_id: "admin-1",
+      p_admin_id: ADMIN_1,
     });
   });
 
@@ -194,22 +197,25 @@ describe("createManualCoupon", () => {
     mockSupa.setRpcResult({ data: { id: 1 }, error: null });
 
     await createManualCoupon({
-      customerId: "user-1",
+      customerId: USER_1,
+      percentage: 20,
       expiresAt: "2026-03-15",
     });
 
-    const rpcArgs = mockSupa.client.rpc.mock.calls[0][1] as Record<string, unknown>;
+    const firstCall = mockSupa.client.rpc.mock.calls[0];
+    if (!firstCall) throw new Error("Expected rpc to have been called");
+    const rpcArgs = firstCall[1] as Record<string, unknown>;
     expect(rpcArgs.p_expires_at).toBe("2026-03-15T23:59:59.999Z");
   });
 
   it("sets optional parameters to null when not provided", async () => {
     mockSupa.setRpcResult({ data: { id: 1 }, error: null });
 
-    await createManualCoupon({ customerId: "user-1" });
+    await createManualCoupon({ customerId: USER_1, templateId: 5 });
 
     expect(mockSupa.client.rpc).toHaveBeenCalledWith("create_manual_coupon", {
-      p_customer_id: "user-1",
-      p_template_id: null,
+      p_customer_id: USER_1,
+      p_template_id: 5,
       p_amount: null,
       p_percentage: null,
       p_expires_at: null,
@@ -218,25 +224,44 @@ describe("createManualCoupon", () => {
     });
   });
 
-  it("passes amount and percentage when provided", async () => {
+  it("passes amount when provided", async () => {
     mockSupa.setRpcResult({ data: { id: 1 }, error: null });
 
     await createManualCoupon({
-      customerId: "user-1",
+      customerId: USER_1,
       amount: 1000,
-      percentage: 20,
     });
 
-    const rpcArgs = mockSupa.client.rpc.mock.calls[0][1] as Record<string, unknown>;
+    const firstCall = mockSupa.client.rpc.mock.calls[0];
+    if (!firstCall) throw new Error("Expected rpc to have been called");
+    const rpcArgs = firstCall[1] as Record<string, unknown>;
     expect(rpcArgs.p_amount).toBe(1000);
-    expect(rpcArgs.p_percentage).toBe(20);
+    expect(rpcArgs.p_percentage).toBeNull();
+  });
+
+  it("rejects when both amount and percentage are provided (Zod refine)", async () => {
+    mockSupa.setRpcResult({ data: { id: 1 }, error: null });
+
+    await expect(
+      createManualCoupon({
+        customerId: USER_1,
+        amount: 1000,
+        percentage: 20,
+      })
+    ).rejects.toThrow(/templateId, amount, percentage/);
+  });
+
+  it("rejects when no amount/percentage/templateId provided (Zod refine)", async () => {
+    await expect(
+      createManualCoupon({ customerId: USER_1 })
+    ).rejects.toThrow(/templateId, amount, percentage/);
   });
 
   it("throws on RPC error", async () => {
     mockSupa.setRpcResult({ data: null, error: { message: "RPC failed" } } as any);
 
     await expect(
-      createManualCoupon({ customerId: "user-1" })
+      createManualCoupon({ customerId: USER_1, templateId: 5 })
     ).rejects.toEqual({ message: "RPC failed" });
   });
 });

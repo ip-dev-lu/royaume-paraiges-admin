@@ -119,7 +119,7 @@ export default function EditEstablishmentPage() {
             city: establishment.city || "",
             country: establishment.country || "",
             anniversary: establishment.anniversary
-              ? establishment.anniversary.split("T")[0]
+              ? establishment.anniversary.split("T")[0] ?? ""
               : "",
           });
           setCurrentFeaturedImage(establishment.featured_image);

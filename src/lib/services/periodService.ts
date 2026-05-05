@@ -6,8 +6,8 @@ export async function getAvailablePeriods(
   periodType?: PeriodType
 ): Promise<AvailablePeriod[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from("available_periods") as any)
+  let query = supabase
+    .from("available_periods")
     .select("*")
     .order("period_identifier", { ascending: true });
 
@@ -31,8 +31,8 @@ export async function getAvailablePeriodsByType(
   }
 ): Promise<AvailablePeriod[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from("available_periods") as any)
+  let query = supabase
+    .from("available_periods")
     .select("*")
     .eq("period_type", periodType)
     .order("period_identifier", { ascending: true });
@@ -63,8 +63,8 @@ export async function getAvailablePeriod(
   periodIdentifier: string
 ): Promise<AvailablePeriod | null> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("available_periods") as any)
+  const { data, error } = await supabase
+    .from("available_periods")
     .select("*")
     .eq("period_type", periodType)
     .eq("period_identifier", periodIdentifier)
@@ -96,8 +96,8 @@ export function getCurrentPeriodIdentifier(periodType: PeriodType): string {
 // Récupérer les années disponibles
 export async function getAvailableYears(): Promise<number[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("available_periods") as any)
+  const { data, error } = await supabase
+    .from("available_periods")
     .select("period_identifier")
     .eq("period_type", "yearly")
     .order("period_identifier");
@@ -118,7 +118,7 @@ export function formatPeriodLabel(
     case "weekly": {
       // 2026-W04 -> Semaine 4, 2026
       const match = periodIdentifier.match(/^(\d{4})-W(\d{2})$/);
-      if (match) {
+      if (match && match[1] && match[2]) {
         return `Semaine ${parseInt(match[2])}, ${match[1]}`;
       }
       return periodIdentifier;
@@ -126,13 +126,13 @@ export function formatPeriodLabel(
     case "monthly": {
       // 2026-01 -> Janvier 2026
       const match = periodIdentifier.match(/^(\d{4})-(\d{2})$/);
-      if (match) {
+      if (match && match[1] && match[2]) {
         const months = [
           "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
           "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
         ];
         const monthIndex = parseInt(match[2]) - 1;
-        return `${months[monthIndex]} ${match[1]}`;
+        return `${months[monthIndex] ?? ""} ${match[1]}`;
       }
       return periodIdentifier;
     }

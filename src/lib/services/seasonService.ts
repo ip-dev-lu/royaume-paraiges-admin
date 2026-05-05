@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
+import { seasonClosureSchema } from "@/lib/schemas/seasonClosure.schema";
 
 export type SeasonClosureStep = "snapshot" | "award_badges" | "reset";
 export type SeasonClosureSource = "cron" | "cron_fallback" | "manual" | "dry_run_aborted";
@@ -47,11 +48,12 @@ export async function previewSeasonClosure(year: number): Promise<SeasonClosureP
  * Idempotente.
  */
 export async function snapshotSeason(year: number): Promise<SeasonStepResult> {
+  const input = seasonClosureSchema.parse({ year, source: "manual" });
   const supabase = createClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.rpc as any)("snapshot_season", {
-    p_year: year,
-    p_source: "manual",
+    p_year: input.year,
+    p_source: input.source,
   });
   if (error) throw error;
   return data as SeasonStepResult;
@@ -62,11 +64,12 @@ export async function snapshotSeason(year: number): Promise<SeasonStepResult> {
  * Garde sur prérequis : le snapshot doit avoir été exécuté.
  */
 export async function awardSeasonRankBadges(year: number): Promise<SeasonStepResult> {
+  const input = seasonClosureSchema.parse({ year, source: "manual" });
   const supabase = createClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.rpc as any)("award_season_rank_badges", {
-    p_year: year,
-    p_source: "manual",
+    p_year: input.year,
+    p_source: input.source,
   });
   if (error) throw error;
   return data as SeasonStepResult;
@@ -78,11 +81,12 @@ export async function awardSeasonRankBadges(year: number): Promise<SeasonStepRes
  * PdB et badges déjà attribués ne sont PAS touchés.
  */
 export async function resetSeason(year: number): Promise<SeasonStepResult> {
+  const input = seasonClosureSchema.parse({ year, source: "manual" });
   const supabase = createClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.rpc as any)("reset_season", {
-    p_year: year,
-    p_source: "manual",
+    p_year: input.year,
+    p_source: input.source,
   });
   if (error) throw error;
   return data as SeasonStepResult;
