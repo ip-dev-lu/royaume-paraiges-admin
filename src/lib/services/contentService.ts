@@ -104,8 +104,7 @@ export function getImageUrl(
 export async function getEstablishments(): Promise<Establishment[]> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("establishments")
     .select("*")
     .order("title");
@@ -126,8 +125,7 @@ export async function getEstablishment(
 ): Promise<Establishment | null> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("establishments")
     .select("*")
     .eq("id", id)
@@ -147,8 +145,7 @@ export async function getEstablishment(
 export async function getBeers(): Promise<Beer[]> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("beers")
     .select("*, breweries(*)")
     .order("title");
@@ -167,8 +164,7 @@ export async function getBeers(): Promise<Beer[]> {
 export async function getBeer(id: number): Promise<Beer | null> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("beers")
     .select("*, breweries(*)")
     .eq("id", id)
@@ -188,8 +184,7 @@ export async function getBeer(id: number): Promise<Beer | null> {
 export async function getBreweries(): Promise<Brewery[]> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("breweries")
     .select("*")
     .order("title");
@@ -208,8 +203,7 @@ export async function getBreweries(): Promise<Brewery[]> {
 export async function getStyles(): Promise<BeerStyle[]> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("beer_styles")
     .select("*")
     .order("title");
@@ -228,8 +222,7 @@ export async function getStyles(): Promise<BeerStyle[]> {
 export async function getBeersEstablishments(): Promise<BeersEstablishments[]> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("beers_establishments")
     .select("*");
 
@@ -250,8 +243,7 @@ export async function getBeersByEstablishment(
   const supabase = createClient();
 
   // Recuperer les IDs des bieres liees a cet etablissement
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: junctions, error: junctionError } = await (supabase as any)
+  const { data: junctions, error: junctionError } = await supabase
     .from("beers_establishments")
     .select("beer_id")
     .eq("establishment_id", establishmentId);
@@ -263,8 +255,7 @@ export async function getBeersByEstablishment(
   const beerIds = (junctions as { beer_id: number }[]).map((j) => j.beer_id);
 
   // Recuperer les bieres
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: beers, error: beersError } = await (supabase as any)
+  const { data: beers, error: beersError } = await supabase
     .from("beers")
     .select("*, breweries(*)")
     .in("id", beerIds)
@@ -287,8 +278,7 @@ export async function getEstablishmentsByBeer(
   const supabase = createClient();
 
   // Recuperer les IDs des etablissements lies a cette biere
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: junctions, error: junctionError } = await (supabase as any)
+  const { data: junctions, error: junctionError } = await supabase
     .from("beers_establishments")
     .select("establishment_id")
     .eq("beer_id", beerId);
@@ -302,10 +292,7 @@ export async function getEstablishmentsByBeer(
   );
 
   // Recuperer les etablissements
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: establishments, error: establishmentsError } = await (
-    supabase as any
-  )
+  const { data: establishments, error: establishmentsError } = await supabase
     .from("establishments")
     .select("*")
     .in("id", establishmentIds)
@@ -332,14 +319,11 @@ export interface ContentStatsResult {
 export async function getContentStats(): Promise<ContentStatsResult> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sb = supabase as any;
-
   const [establishments, beers, breweries, styles] = await Promise.all([
-    sb.from("establishments").select("id", { count: "exact", head: true }),
-    sb.from("beers").select("id", { count: "exact", head: true }),
-    sb.from("breweries").select("id", { count: "exact", head: true }),
-    sb.from("beer_styles").select("id", { count: "exact", head: true }),
+    supabase.from("establishments").select("id", { count: "exact", head: true }),
+    supabase.from("beers").select("id", { count: "exact", head: true }),
+    supabase.from("breweries").select("id", { count: "exact", head: true }),
+    supabase.from("beer_styles").select("id", { count: "exact", head: true }),
   ]);
 
   return {
@@ -358,11 +342,11 @@ export async function updateBeer(
   data: BeerUpdateType
 ): Promise<Beer> {
   const supabase = createClient();
+  const payload = { ...data, updated_at: new Date().toISOString() };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: updated, error } = await (supabase as any)
+  const { data: updated, error } = await supabase
     .from("beers")
-    .update({ ...data, updated_at: new Date().toISOString() })
+    .update(payload as never)
     .eq("id", id)
     .select("*, breweries(*)")
     .single();
@@ -475,11 +459,11 @@ export async function updateEstablishment(
   data: EstablishmentUpdateType
 ): Promise<Establishment> {
   const supabase = createClient();
+  const payload = { ...data, updated_at: new Date().toISOString() };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: updated, error } = await (supabase as any)
+  const { data: updated, error } = await supabase
     .from("establishments")
-    .update({ ...data, updated_at: new Date().toISOString() })
+    .update(payload as never)
     .eq("id", id)
     .select("*")
     .single();
@@ -507,8 +491,7 @@ export interface LevelThreshold {
 
 export async function getLevelThresholds(): Promise<LevelThreshold[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("level_thresholds")
     .select("*")
     .order("level");
@@ -522,11 +505,23 @@ export async function updateLevelThreshold(
   data: { lore?: string | null }
 ): Promise<void> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const payload = { ...data, updated_at: new Date().toISOString() };
+  const { error } = await supabase
     .from("level_thresholds")
-    .update({ ...data, updated_at: new Date().toISOString() })
+    .update(payload as never)
     .eq("id", id);
 
   if (error) throw error;
+}
+
+export async function getXpPerEuro(): Promise<number> {
+  const supabase = createClient();
+  const { data, error } = await (supabase
+    .from("constants") as any)
+    .select("value")
+    .eq("key", "xp_gains")
+    .single();
+
+  if (error) throw error;
+  return parseFloat(data.value);
 }

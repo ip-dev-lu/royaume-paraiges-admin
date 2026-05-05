@@ -96,7 +96,7 @@ function isQuestForPeriod(quest: QuestWithRelations, periodId: string): boolean 
 function getLatestPeriod(quest: QuestWithRelations): string {
   const periods = quest.quest_periods || [];
   if (periods.length === 0) return "";
-  return [...periods].map((p) => p.period_identifier).sort().reverse()[0];
+  return [...periods].map((p) => p.period_identifier).sort().reverse()[0] ?? "";
 }
 
 const periodTypeLabels: Record<PeriodType, string> = {

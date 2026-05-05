@@ -11,6 +11,7 @@ import type {
   PeriodType,
   QuestType,
 } from "@/types/database";
+import { questSchema, questUpdateSchema } from "@/lib/schemas/quest.schema";
 
 // CRUD Quests
 export async function getQuests(periodType?: PeriodType): Promise<QuestWithRelations[]> {
@@ -63,43 +64,46 @@ export async function getQuest(id: number): Promise<QuestWithRelations | null> {
 }
 
 export async function createQuest(quest: QuestInsert): Promise<Quest> {
+  questSchema.parse(quest);
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("quests") as any)
-    .insert(quest)
+  const { data, error } = await supabase
+    .from("quests")
+    .insert(quest as never)
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Quest;
 }
 
 export async function updateQuest(id: number, quest: QuestUpdate): Promise<Quest> {
+  questUpdateSchema.parse(quest);
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("quests") as any)
-    .update({ ...quest, updated_at: new Date().toISOString() })
+  const payload: QuestUpdate = { ...quest, updated_at: new Date().toISOString() };
+  const { data, error } = await supabase
+    .from("quests")
+    .update(payload as never)
     .eq("id", id)
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Quest;
 }
 
 export async function deleteQuest(id: number): Promise<void> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("quests") as any).delete().eq("id", id);
+  const { error } = await supabase.from("quests").delete().eq("id", id);
 
   if (error) throw error;
 }
 
 export async function toggleQuestActive(id: number, isActive: boolean): Promise<void> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("quests") as any)
-    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+  const payload: QuestUpdate = { is_active: isActive, updated_at: new Date().toISOString() };
+  const { error } = await supabase
+    .from("quests")
+    .update(payload as never)
     .eq("id", id);
 
   if (error) throw error;
@@ -195,12 +199,13 @@ export async function getQuestStats(): Promise<QuestStats> {
   const supabase = createClient();
 
   // Get quest counts
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: quests } = await (supabase.from("quests") as any).select("id, is_active, period_type");
+  const { data: quests } = await supabase
+    .from("quests")
+    .select("id, is_active, period_type");
 
   // Get completion logs
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: completions } = await (supabase.from("quest_completion_logs") as any)
+  const { data: completions } = await supabase
+    .from("quest_completion_logs")
     .select("period_type, coupon_id, badge_awarded_id, bonus_xp_awarded, bonus_cashback_awarded");
 
   const questsData = (quests || []) as { id: number; is_active: boolean; period_type: string }[];
@@ -233,8 +238,8 @@ export async function getQuestStats(): Promise<QuestStats> {
 // Quest Periods Management
 export async function getQuestPeriods(questId: number): Promise<QuestPeriod[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("quest_periods") as any)
+  const { data, error } = await supabase
+    .from("quest_periods")
     .select("*")
     .eq("quest_id", questId)
     .order("period_identifier");
@@ -247,8 +252,8 @@ export async function setQuestPeriods(questId: number, periodIdentifiers: string
   const supabase = createClient();
 
   // Supprimer les périodes existantes
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: deleteError } = await (supabase.from("quest_periods") as any)
+  const { error: deleteError } = await supabase
+    .from("quest_periods")
     .delete()
     .eq("quest_id", questId);
 
@@ -261,9 +266,9 @@ export async function setQuestPeriods(questId: number, periodIdentifiers: string
       period_identifier: period,
     }));
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: insertError } = await (supabase.from("quest_periods") as any)
-      .insert(periodsToInsert);
+    const { error: insertError } = await supabase
+      .from("quest_periods")
+      .insert(periodsToInsert as never);
 
     if (insertError) throw insertError;
   }
@@ -271,9 +276,10 @@ export async function setQuestPeriods(questId: number, periodIdentifiers: string
 
 export async function addQuestPeriod(questId: number, periodIdentifier: string): Promise<QuestPeriod> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("quest_periods") as any)
-    .insert({ quest_id: questId, period_identifier: periodIdentifier })
+  const payload: QuestPeriodInsert = { quest_id: questId, period_identifier: periodIdentifier };
+  const { data, error } = await supabase
+    .from("quest_periods")
+    .insert(payload as never)
     .select()
     .single();
 
@@ -283,8 +289,8 @@ export async function addQuestPeriod(questId: number, periodIdentifier: string):
 
 export async function removeQuestPeriod(questId: number, periodIdentifier: string): Promise<void> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("quest_periods") as any)
+  const { error } = await supabase
+    .from("quest_periods")
     .delete()
     .eq("quest_id", questId)
     .eq("period_identifier", periodIdentifier);
@@ -301,8 +307,8 @@ export async function removeQuestPeriod(questId: number, periodIdentifier: strin
 
 export async function getQuestEstablishments(questId: number): Promise<number[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("quests_establishments") as any)
+  const { data, error } = await supabase
+    .from("quests_establishments")
     .select("establishment_id")
     .eq("quest_id", questId);
 
@@ -323,8 +329,8 @@ export async function setQuestEstablishments(
 ): Promise<void> {
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: deleteError } = await (supabase.from("quests_establishments") as any)
+  const { error: deleteError } = await supabase
+    .from("quests_establishments")
     .delete()
     .eq("quest_id", questId);
 
@@ -335,9 +341,9 @@ export async function setQuestEstablishments(
       quest_id: questId,
       establishment_id: id,
     }));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: insertError } = await (supabase.from("quests_establishments") as any)
-      .insert(rows);
+    const { error: insertError } = await supabase
+      .from("quests_establishments")
+      .insert(rows as never);
 
     if (insertError) throw insertError;
   }
@@ -520,7 +526,12 @@ export function parseQuestsCsv(csvContent: string): { rows: QuestCsvRow[]; error
   }
 
   // Parse header
-  const headers = parseCsvLine(lines[0]);
+  const firstLine = lines[0];
+  if (!firstLine) {
+    errors.push("Le fichier CSV est vide.");
+    return { rows, errors };
+  }
+  const headers = parseCsvLine(firstLine);
   const headerMap = new Map<string, number>();
   headers.forEach((h, i) => headerMap.set(h.trim().toLowerCase(), i));
 
@@ -537,10 +548,12 @@ export function parseQuestsCsv(csvContent: string): { rows: QuestCsvRow[]; error
   const validPeriodTypes = ["weekly", "monthly", "yearly"];
 
   for (let i = 1; i < lines.length; i++) {
-    const values = parseCsvLine(lines[i]);
+    const rawLine = lines[i];
+    if (rawLine === undefined) continue;
+    const values = parseCsvLine(rawLine);
     const get = (col: string) => {
       const idx = headerMap.get(col);
-      return idx !== undefined && idx < values.length ? values[idx].trim() : "";
+      return idx !== undefined && idx < values.length ? (values[idx] ?? "").trim() : "";
     };
 
     const name = get("name");
@@ -640,6 +653,7 @@ export async function importQuestsFromCsv(
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
+    if (!row) continue;
     try {
       // Convert target_value: euros → centimes for amount_spent
       const targetValue =
@@ -704,8 +718,8 @@ export async function getQuestProgressStatsByQuests(
   if (questIds.length === 0) return new Map();
 
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("quest_progress") as any)
+  const { data, error } = await supabase
+    .from("quest_progress")
     .select("quest_id, status")
     .in("quest_id", questIds);
 
@@ -727,7 +741,8 @@ export async function getQuestProgressStatsByQuests(
   for (const row of (data || []) as { quest_id: number; status: string }[]) {
     const stats = statsMap.get(row.quest_id);
     if (stats && row.status in stats) {
-      (stats as unknown as Record<string, number>)[row.status]++;
+      const statsRecord = stats as unknown as Record<string, number>;
+      statsRecord[row.status] = (statsRecord[row.status] ?? 0) + 1;
       stats.total++;
     }
   }

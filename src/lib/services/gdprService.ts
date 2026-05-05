@@ -77,8 +77,9 @@ export async function updateGdprRequestStatus(
     updateData.notes = notes;
   }
 
-  const { error } = await (supabase.from("gdpr_requests") as any)
-    .update(updateData)
+  const { error } = await supabase
+    .from("gdpr_requests")
+    .update(updateData as never)
     .eq("id", requestId);
 
   if (error) {

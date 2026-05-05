@@ -76,12 +76,15 @@ export async function getDistributionsByPeriod(
   // Group by date and type
   const grouped = ((data || []) as LogEntry[]).reduce((acc, log) => {
     const date = log.distributed_at.split("T")[0];
+    if (!date) return acc;
     const key = `${date}-${log.distribution_type}`;
 
-    if (!acc[key]) {
-      acc[key] = { date, type: log.distribution_type, count: 0 };
+    const existing = acc[key];
+    if (!existing) {
+      acc[key] = { date, type: log.distribution_type, count: 1 };
+    } else {
+      existing.count++;
     }
-    acc[key].count++;
 
     return acc;
   }, {} as Record<string, DistributionStats>);
@@ -291,6 +294,7 @@ export async function getDailyCashbackStats(
   const rewardsByDay: Record<string, number> = {};
   for (const row of (gainsRes.data || []) as GainRow[]) {
     const date = row.created_at.split("T")[0];
+    if (!date) continue;
     const amount = row.cashback_money || 0;
     if (row.source_type === "receipt") {
       organicByDay[date] = (organicByDay[date] || 0) + amount;
@@ -302,6 +306,7 @@ export async function getDailyCashbackStats(
   const spentByDay: Record<string, number> = {};
   for (const row of (spentRes.data || []) as SpendingRow[]) {
     const date = row.created_at.split("T")[0];
+    if (!date) continue;
     spentByDay[date] = (spentByDay[date] || 0) + (row.amount || 0);
   }
 
@@ -311,6 +316,10 @@ export async function getDailyCashbackStats(
   const end = new Date(endDate);
   while (current < end) {
     const dateStr = current.toISOString().split("T")[0];
+    if (!dateStr) {
+      current.setDate(current.getDate() + 1);
+      continue;
+    }
     result.push({
       date: dateStr,
       creditedOrganic: organicByDay[dateStr] || 0,
@@ -340,8 +349,8 @@ export async function getDailyRevenueStats(
     receipt_lines: { amount: number; payment_method: string }[];
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from("receipts") as any)
+  let query = supabase
+    .from("receipts")
     .select("created_at, receipt_lines(amount, payment_method)")
     .gte("created_at", startDate)
     .lt("created_at", endDate)
@@ -358,6 +367,7 @@ export async function getDailyRevenueStats(
 
   for (const receipt of (data || []) as ReceiptWithLines[]) {
     const date = receipt.created_at.split("T")[0];
+    if (!date) continue;
     for (const line of receipt.receipt_lines || []) {
       const amount = line.amount || 0;
       if (line.payment_method === "card") {
@@ -375,6 +385,10 @@ export async function getDailyRevenueStats(
   const end = new Date(endDate);
   while (current < end) {
     const dateStr = current.toISOString().split("T")[0];
+    if (!dateStr) {
+      current.setDate(current.getDate() + 1);
+      continue;
+    }
     result.push({
       date: dateStr,
       card: cardByDay[dateStr] || 0,
@@ -396,9 +410,7 @@ export async function getUnspentCashbackTotal(): Promise<number> {
   const supabase = createClient();
   const testIds = await getTestUserIds();
   type StatsRow = { cashback_available: number | string | null };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from("user_stats") as any)
-    .select("cashback_available");
+  let query = supabase.from("user_stats").select("cashback_available");
 
   if (testIds.length > 0) query = query.not("customer_id", "in", `(${testIds.join(",")})`);
 
@@ -612,8 +624,8 @@ export async function getEmployeesWithTicketCount(
 
   // Fetch receipt counts per employee within the date range
   const employeeIds = profiles.map((p) => p.id);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let receiptQuery = (supabase.from("receipts") as any)
+  let receiptQuery = supabase
+    .from("receipts")
     .select("employee_id")
     .in("employee_id", employeeIds);
 
@@ -657,8 +669,8 @@ export async function getEstablishmentsWithTicketCount(
   if (establishments.length === 0) return [];
 
   const estIds = establishments.map((e) => e.id);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let receiptQuery = (supabase.from("receipts") as any)
+  let receiptQuery = supabase
+    .from("receipts")
     .select("establishment_id")
     .in("establishment_id", estIds);
 
@@ -771,8 +783,8 @@ export async function getDrilldownReceipts(
   const supabase = createClient();
 
   const testIds = await getTestUserIds();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from("receipts") as any)
+  let query = supabase
+    .from("receipts")
     .select(
       "id, created_at, amount, customer_id, establishment_id, employee_id, profiles!receipts_customer_id_fkey(first_name, last_name), establishments(title), employee:profiles!receipts_employee_id_fkey(first_name, last_name), receipt_lines(amount, payment_method), receipt_consumption_items(id, consumption_type, quantity)",
       { count: "exact" }
@@ -850,8 +862,8 @@ export async function getDrilldownSpendings(
   const supabase = createClient();
 
   const testIds = await getTestUserIds();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from("spendings") as any)
+  let query = supabase
+    .from("spendings")
     .select(
       "id, created_at, amount, customer_id, establishment_id, profiles!spendings_customer_id_fkey(first_name, last_name), establishments(title)",
       { count: "exact" }
@@ -909,8 +921,8 @@ export async function getDrilldownGains(
   const supabase = createClient();
 
   const testIds = await getTestUserIds();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from("gains") as any)
+  let query = supabase
+    .from("gains")
     .select(
       "id, created_at, xp, cashback_money, source_type, period_identifier, customer_id, establishment_id, profiles!gains_customer_id_fkey(first_name, last_name), establishments(title)",
       { count: "exact" }
@@ -983,8 +995,8 @@ export async function getDrilldownActiveCoupons(
   const supabase = createClient();
 
   const testIds = await getTestUserIds();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from("coupons") as any)
+  let query = supabase
+    .from("coupons")
     .select(
       "id, created_at, percentage, distribution_type, period_identifier, expires_at, customer_id, profiles!coupons_customer_id_fkey(first_name, last_name)",
       { count: "exact" }

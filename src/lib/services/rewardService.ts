@@ -9,6 +9,7 @@ import type {
   BadgeType,
   Json,
 } from "@/types/database";
+import { distributeRewardsSchema } from "@/lib/schemas/distributeRewards.schema";
 
 // Badge Types
 export async function getBadgeTypes(): Promise<BadgeType[]> {
@@ -24,9 +25,9 @@ export async function getBadgeTypes(): Promise<BadgeType[]> {
 
 export async function updateBadgeType(id: number, data: { lore?: string | null }): Promise<void> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("badge_types") as any)
-    .update(data)
+  const { error } = await supabase
+    .from("badge_types")
+    .update(data as never)
     .eq("id", id);
   if (error) throw error;
 }
@@ -64,10 +65,9 @@ export async function getRewardTier(id: number): Promise<RewardTier | null> {
 
 export async function createRewardTier(tier: RewardTierInsert) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from("reward_tiers") as any)
-    .insert(tier)
+  const { data, error } = await supabase
+    .from("reward_tiers")
+    .insert(tier as never)
     .select()
     .single();
 
@@ -77,10 +77,10 @@ export async function createRewardTier(tier: RewardTierInsert) {
 
 export async function updateRewardTier(id: number, tier: RewardTierUpdate) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from("reward_tiers") as any)
-    .update({ ...tier, updated_at: new Date().toISOString() })
+  const payload: RewardTierUpdate = { ...tier, updated_at: new Date().toISOString() };
+  const { data, error } = await supabase
+    .from("reward_tiers")
+    .update(payload as never)
     .eq("id", id)
     .select()
     .single();
@@ -91,8 +91,7 @@ export async function updateRewardTier(id: number, tier: RewardTierUpdate) {
 
 export async function deleteRewardTier(id: number) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("reward_tiers") as any).delete().eq("id", id);
+  const { error } = await supabase.from("reward_tiers").delete().eq("id", id);
 
   if (error) throw error;
 }
@@ -133,10 +132,9 @@ export async function getPeriodConfig(
 
 export async function createPeriodConfig(config: PeriodRewardConfigInsert) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from("period_reward_configs") as any)
-    .insert(config)
+  const { data, error } = await supabase
+    .from("period_reward_configs")
+    .insert(config as never)
     .select()
     .single();
 
@@ -149,10 +147,10 @@ export async function updatePeriodConfig(
   config: Partial<PeriodRewardConfig>
 ) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from("period_reward_configs") as any)
-    .update({ ...config, updated_at: new Date().toISOString() })
+  const payload = { ...config, updated_at: new Date().toISOString() };
+  const { data, error } = await supabase
+    .from("period_reward_configs")
+    .update(payload as never)
     .eq("id", id)
     .select()
     .single();
@@ -182,14 +180,21 @@ export async function distributeRewards(
   periodIdentifier?: string,
   adminId?: string
 ) {
+  const input = distributeRewardsSchema.parse({
+    periodType,
+    periodIdentifier,
+    force: false,
+    previewOnly: false,
+    adminId,
+  });
   const supabase = createClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.rpc as any)("distribute_period_rewards_v2", {
-    p_period_type: periodType,
-    p_period_identifier: periodIdentifier,
-    p_force: false,
-    p_preview_only: false,
-    p_admin_id: adminId,
+    p_period_type: input.periodType,
+    p_period_identifier: input.periodIdentifier,
+    p_force: input.force,
+    p_preview_only: input.previewOnly,
+    p_admin_id: input.adminId,
   });
 
   if (error) throw error;
@@ -201,14 +206,21 @@ export async function forceDistributeRewards(
   periodIdentifier?: string,
   adminId?: string
 ) {
+  const input = distributeRewardsSchema.parse({
+    periodType,
+    periodIdentifier,
+    force: true,
+    previewOnly: false,
+    adminId,
+  });
   const supabase = createClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.rpc as any)("distribute_period_rewards_v2", {
-    p_period_type: periodType,
-    p_period_identifier: periodIdentifier,
-    p_force: true,
-    p_preview_only: false,
-    p_admin_id: adminId,
+    p_period_type: input.periodType,
+    p_period_identifier: input.periodIdentifier,
+    p_force: input.force,
+    p_preview_only: input.previewOnly,
+    p_admin_id: input.adminId,
   });
 
   if (error) throw error;

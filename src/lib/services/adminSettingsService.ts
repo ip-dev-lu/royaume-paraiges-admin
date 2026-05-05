@@ -23,8 +23,8 @@ export type QuestReferencePrices = {
 
 export async function getAllAdminSettings(): Promise<AdminSetting[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("admin_settings") as any)
+  const { data, error } = await supabase
+    .from("admin_settings")
     .select("*")
     .order("key");
   if (error) throw error;
@@ -33,8 +33,8 @@ export async function getAllAdminSettings(): Promise<AdminSetting[]> {
 
 export async function getAdminSetting(key: string): Promise<AdminSetting | null> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("admin_settings") as any)
+  const { data, error } = await supabase
+    .from("admin_settings")
     .select("*")
     .eq("key", key)
     .maybeSingle();
@@ -44,9 +44,10 @@ export async function getAdminSetting(key: string): Promise<AdminSetting | null>
 
 export async function updateAdminSetting(key: string, value: unknown): Promise<AdminSetting> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("admin_settings") as any)
-    .update({ value, updated_at: new Date().toISOString() })
+  const payload = { value: value as never, updated_at: new Date().toISOString() };
+  const { data, error } = await supabase
+    .from("admin_settings")
+    .update(payload as never)
     .eq("key", key)
     .select()
     .single();
@@ -86,8 +87,8 @@ export interface AvgTicket12m {
 
 export async function getAvgTicket12m(): Promise<AvgTicket12m> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("avg_ticket_12m") as any)
+  const { data, error } = await supabase
+    .from("avg_ticket_12m")
     .select("*")
     .maybeSingle();
   if (error) throw error;

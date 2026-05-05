@@ -184,11 +184,11 @@ export async function updateUser(
   data: ProfileUpdate
 ): Promise<Profile> {
   const supabase = createClient();
+  const payload: ProfileUpdate = { ...data, updated_at: new Date().toISOString() };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: updated, error } = await (supabase as any)
+  const { data: updated, error } = await supabase
     .from("profiles")
-    .update({ ...data, updated_at: new Date().toISOString() })
+    .update(payload as never)
     .eq("id", userId)
     .select()
     .single();
@@ -393,6 +393,7 @@ export async function getUserDailyCashback(
   const rewardsByDay: Record<string, number> = {};
   for (const row of (gainsRes.data || []) as GainRow[]) {
     const date = row.created_at.split("T")[0];
+    if (!date) continue;
     const cb = row.cashback_money || 0;
     if (row.source_type === "receipt") {
       organicByDay[date] = (organicByDay[date] || 0) + cb;
@@ -404,6 +405,7 @@ export async function getUserDailyCashback(
   const spentByDay: Record<string, number> = {};
   for (const row of (spendingsRes.data || []) as SpendingRow[]) {
     const date = row.created_at.split("T")[0];
+    if (!date) continue;
     spentByDay[date] = (spentByDay[date] || 0) + (row.amount || 0);
   }
 
@@ -412,6 +414,10 @@ export async function getUserDailyCashback(
   const end = new Date(endDate);
   while (current < end) {
     const dateStr = current.toISOString().split("T")[0];
+    if (!dateStr) {
+      current.setDate(current.getDate() + 1);
+      continue;
+    }
     const earnedOrganic = organicByDay[dateStr] || 0;
     const earnedRewards = rewardsByDay[dateStr] || 0;
     const spent = spentByDay[dateStr] || 0;

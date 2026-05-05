@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Coupon, CouponDistributionLog, Gain, Profile } from "@/types/database";
+import { manualCouponSchema } from "@/lib/schemas/manualCoupon.schema";
 
 export interface CouponFilters {
   isUsed?: boolean;
@@ -124,22 +125,23 @@ export async function createManualCoupon(params: {
   notes?: string;
   adminId?: string;
 }) {
+  const input = manualCouponSchema.parse(params);
   const supabase = createClient();
 
   // Convert date string (YYYY-MM-DD) to ISO timestamp for PostgreSQL
-  const expiresAtTimestamp = params.expiresAt
-    ? new Date(params.expiresAt + "T23:59:59.999Z").toISOString()
+  const expiresAtTimestamp = input.expiresAt
+    ? new Date(input.expiresAt + "T23:59:59.999Z").toISOString()
     : null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.rpc as any)("create_manual_coupon", {
-    p_customer_id: params.customerId,
-    p_template_id: params.templateId ?? null,
-    p_amount: params.amount ?? null,
-    p_percentage: params.percentage ?? null,
+    p_customer_id: input.customerId,
+    p_template_id: input.templateId ?? null,
+    p_amount: input.amount ?? null,
+    p_percentage: input.percentage ?? null,
     p_expires_at: expiresAtTimestamp,
-    p_notes: params.notes ?? null,
-    p_admin_id: params.adminId ?? null,
+    p_notes: input.notes ?? null,
+    p_admin_id: input.adminId ?? null,
   });
 
   if (error) throw error;
