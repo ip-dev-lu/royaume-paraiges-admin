@@ -144,7 +144,7 @@ export async function getQuestCompletionsByQuest(questId: number): Promise<Quest
 // RPC functions
 export async function distributeQuestReward(questProgressId: number, adminId?: string) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("distribute_quest_reward", {
     p_quest_progress_id: questProgressId,
     p_admin_id: adminId,
@@ -156,7 +156,7 @@ export async function distributeQuestReward(questProgressId: number, adminId?: s
 
 export async function distributeAllQuestRewards(adminId?: string) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("distribute_all_quest_rewards", {
     p_admin_id: adminId,
   });
@@ -167,7 +167,7 @@ export async function distributeAllQuestRewards(adminId?: string) {
 
 export async function getUserQuests(customerId: string, periodType?: PeriodType) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("get_user_quests", {
     p_customer_id: customerId,
     p_period_type: periodType || null,

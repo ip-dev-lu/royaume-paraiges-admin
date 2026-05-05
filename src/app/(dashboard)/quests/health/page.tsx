@@ -151,7 +151,7 @@ export default function QuestHealthPage() {
 
         // Compter les établissements par quest_id (pour scope global / local)
         const supabase = createClient();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { data: qe, error } = await (supabase.from("quests_establishments") as any)
           .select("quest_id");
         if (error) throw error;

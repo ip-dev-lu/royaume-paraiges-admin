@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,14 +24,12 @@ import {
   updateAchievementBadge,
   type AchievementBadge,
 } from "@/lib/services/achievementBadgeService";
-import { useToast } from "@/components/ui/use-toast";
 import { AchievementBadgeForm } from "../_form/AchievementBadgeForm";
 
 export default function EditAchievementBadgePage() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id, 10);
   const router = useRouter();
-  const { toast } = useToast();
   const [badge, setBadge] = useState<AchievementBadge | null>(null);
   const [loading, setLoading] = useState(true);
   const [reawarding, setReawarding] = useState(false);
@@ -41,14 +40,10 @@ export default function EditAchievementBadgePage() {
       .then(setBadge)
       .catch((err) => {
         console.error(err);
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Badge introuvable",
-        });
+        toast.error("Erreur", { description: "Badge introuvable" });
       })
       .finally(() => setLoading(false));
-  }, [id, toast]);
+  }, [id]);
 
   if (loading) {
     return (
@@ -75,15 +70,12 @@ export default function EditAchievementBadgePage() {
     setReawarding(true);
     try {
       const res = await reawardAchievementBadge(badge.id);
-      toast({
-        title: "Réévaluation terminée",
+      toast.success("Réévaluation terminée", {
         description: `${res.awarded_count} nouveau(x) déblocage(s).`,
       });
     } catch (err) {
       console.error(err);
-      toast({
-        variant: "destructive",
-        title: "Échec de la réévaluation",
+      toast.error("Échec de la réévaluation", {
         description: err instanceof Error ? err.message : "Erreur inconnue",
       });
     } finally {
@@ -94,15 +86,11 @@ export default function EditAchievementBadgePage() {
   const handleArchive = async () => {
     try {
       await archiveAchievementBadge(badge.id);
-      toast({ title: "Badge archivé" });
+      toast.success("Badge archivé");
       router.push("/rewards/achievements");
     } catch (err) {
       console.error(err);
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible d'archiver le badge",
-      });
+      toast.error("Erreur", { description: "Impossible d'archiver le badge" });
     }
   };
 
@@ -182,7 +170,7 @@ export default function EditAchievementBadgePage() {
         onCancel={() => router.push("/rewards/achievements")}
         onSubmit={async (payload) => {
           await updateAchievementBadge(badge.id, payload);
-          toast({ title: "Badge mis à jour" });
+          toast.success("Badge mis à jour");
           router.push("/rewards/achievements");
         }}
       />

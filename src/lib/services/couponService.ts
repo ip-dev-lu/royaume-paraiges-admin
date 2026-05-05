@@ -19,7 +19,7 @@ export async function getCoupons(filters?: CouponFilters, limit = 50, offset = 0
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let query: any = baseQuery;
 
   if (filters?.isUsed !== undefined) {
@@ -133,7 +133,7 @@ export async function createManualCoupon(params: {
     ? new Date(input.expiresAt + "T23:59:59.999Z").toISOString()
     : null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("create_manual_coupon", {
     p_customer_id: input.customerId,
     p_template_id: input.templateId ?? null,
@@ -165,7 +165,7 @@ export async function getDistributionLogs(
     .order("distributed_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let query: any = baseQuery;
 
   if (filters?.distributionType) {

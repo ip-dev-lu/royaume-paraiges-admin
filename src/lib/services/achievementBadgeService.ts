@@ -132,7 +132,7 @@ export async function reawardAchievementBadge(
   id: number,
 ): Promise<{ awarded_count: number }> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)(
     "award_achievements_for_all_for_badge",
     { p_badge_id: id },

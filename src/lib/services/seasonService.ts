@@ -35,7 +35,7 @@ export interface SeasonStepResult {
  */
 export async function previewSeasonClosure(year: number): Promise<SeasonClosurePreview> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("preview_season_closure", {
     p_year: year,
   });
@@ -50,7 +50,7 @@ export async function previewSeasonClosure(year: number): Promise<SeasonClosureP
 export async function snapshotSeason(year: number): Promise<SeasonStepResult> {
   const input = seasonClosureSchema.parse({ year, source: "manual" });
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("snapshot_season", {
     p_year: input.year,
     p_source: input.source,
@@ -66,7 +66,7 @@ export async function snapshotSeason(year: number): Promise<SeasonStepResult> {
 export async function awardSeasonRankBadges(year: number): Promise<SeasonStepResult> {
   const input = seasonClosureSchema.parse({ year, source: "manual" });
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("award_season_rank_badges", {
     p_year: input.year,
     p_source: input.source,
@@ -83,7 +83,7 @@ export async function awardSeasonRankBadges(year: number): Promise<SeasonStepRes
 export async function resetSeason(year: number): Promise<SeasonStepResult> {
   const input = seasonClosureSchema.parse({ year, source: "manual" });
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("reset_season", {
     p_year: input.year,
     p_source: input.source,

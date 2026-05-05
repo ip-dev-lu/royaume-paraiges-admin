@@ -50,7 +50,7 @@ export interface DailyRevenue {
 
 export async function getCouponStats(): Promise<CouponStats> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("get_coupon_stats");
 
   if (error) throw error;
@@ -481,7 +481,7 @@ export async function getAnalyticsRevenue(
   filters: AnalyticsFilters
 ): Promise<RevenueData> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("get_analytics_revenue", {
     p_start_date: filters.startDate,
     p_end_date: filters.endDate,
@@ -508,7 +508,7 @@ export async function getAnalyticsDebts(
   filters: AnalyticsFilters
 ): Promise<DebtsData> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("get_analytics_debts", {
     p_start_date: filters.startDate,
     p_end_date: filters.endDate,
@@ -536,7 +536,7 @@ export async function getAnalyticsStock(
   filters: Pick<AnalyticsFilters, "startDate" | "endDate" | "establishmentId">
 ): Promise<StockData> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("get_analytics_stock", {
     p_start_date: filters.startDate,
     p_end_date: filters.endDate,
