@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Card,
   CardContent,
@@ -54,65 +57,112 @@ function generateSlug(name: string): string {
   );
 }
 
-interface FormState {
-  slug: string;
-  name: string;
-  description: string;
-  lore: string;
-  icon: string;
-  rarity: BadgeRarity;
-  criterion_type: AchievementCriterionType;
-  threshold: string;
-  min_cities: string;
-  n_weeks: string;
-  evaluation_mode: EvaluationMode;
-}
+const formSchema = z
+  .object({
+    slug: z
+      .string()
+      .min(1, "Le slug est requis.")
+      .regex(/^[a-z0-9_]+$/, "Slug : uniquement [a-z0-9_]."),
+    name: z.string().min(1, "Le nom est requis.").max(200),
+    description: z.string().max(1000),
+    lore: z.string().max(2000),
+    icon: z.string().max(100),
+    rarity: z.enum(["common", "rare", "epic", "legendary"]),
+    criterion_type: z.enum([
+      "first_order",
+      "orders_threshold",
+      "cities_visited",
+      "all_establishments_visited",
+      "establishments_threshold",
+      "consecutive_weekly_quests",
+    ]),
+    threshold: z.string(),
+    min_cities: z.string(),
+    n_weeks: z.string(),
+    evaluation_mode: z.enum(["realtime", "cron"]),
+  })
+  .superRefine((data, ctx) => {
+    switch (data.criterion_type) {
+      case "orders_threshold":
+      case "establishments_threshold": {
+        const n = parseInt(data.threshold, 10);
+        if (!n || n < 2) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Le seuil doit être ≥ 2.",
+            path: ["threshold"],
+          });
+        }
+        break;
+      }
+      case "cities_visited": {
+        const n = parseInt(data.min_cities, 10);
+        if (!n || n < 2) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Le nombre minimum de villes doit être ≥ 2.",
+            path: ["min_cities"],
+          });
+        }
+        break;
+      }
+      case "consecutive_weekly_quests": {
+        const n = parseInt(data.n_weeks, 10);
+        if (!n || n < 2) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Le nombre de semaines doit être ≥ 2.",
+            path: ["n_weeks"],
+          });
+        }
+        if (data.evaluation_mode !== "cron") {
+          ctx.addIssue({
+            code: "custom",
+            message: "Ce critère requiert le mode cron.",
+            path: ["evaluation_mode"],
+          });
+        }
+        break;
+      }
+    }
+  });
 
-function buildCriterionParams(state: FormState): Record<string, unknown> {
-  switch (state.criterion_type) {
-    case "orders_threshold":
-    case "establishments_threshold":
-      return { threshold: parseInt(state.threshold, 10) || 0 };
-    case "cities_visited":
-      return { min_cities: parseInt(state.min_cities, 10) || 0 };
-    case "consecutive_weekly_quests":
-      return { n_weeks: parseInt(state.n_weeks, 10) || 0 };
-    case "first_order":
-    case "all_establishments_visited":
-    default:
-      return {};
-  }
-}
+type FormInput = z.infer<typeof formSchema>;
 
-function validateParams(state: FormState): string | null {
-  switch (state.criterion_type) {
-    case "orders_threshold":
-    case "establishments_threshold": {
-      const n = parseInt(state.threshold, 10);
-      if (!n || n < 2) return "Le seuil doit être ≥ 2.";
-      return null;
-    }
-    case "cities_visited": {
-      const n = parseInt(state.min_cities, 10);
-      if (!n || n < 2) return "Le nombre minimum de villes doit être ≥ 2.";
-      return null;
-    }
-    case "consecutive_weekly_quests": {
-      const n = parseInt(state.n_weeks, 10);
-      if (!n || n < 2) return "Le nombre de semaines doit être ≥ 2.";
-      return null;
-    }
-    default:
-      return null;
-  }
+interface FormStateInitial {
+  slug?: string;
+  name?: string;
+  description?: string;
+  lore?: string;
+  icon?: string;
+  rarity?: BadgeRarity;
+  criterion_type?: AchievementCriterionType;
+  threshold?: string;
+  min_cities?: string;
+  n_weeks?: string;
+  evaluation_mode?: EvaluationMode;
 }
 
 interface Props {
-  initial?: Partial<FormState>;
+  initial?: FormStateInitial;
   submitLabel: string;
   onSubmit: (payload: AchievementBadgePayload) => Promise<void>;
   onCancel: () => void;
   lockSlug?: boolean;
+}
+
+function buildCriterionParams(values: FormInput): Record<string, unknown> {
+  switch (values.criterion_type) {
+    case "orders_threshold":
+    case "establishments_threshold":
+      return { threshold: parseInt(values.threshold, 10) };
+    case "cities_visited":
+      return { min_cities: parseInt(values.min_cities, 10) };
+    case "consecutive_weekly_quests":
+      return { n_weeks: parseInt(values.n_weeks, 10) };
+    default:
+      return {};
+  }
 }
 
 export function AchievementBadgeForm({
@@ -122,81 +172,76 @@ export function AchievementBadgeForm({
   onCancel,
   lockSlug,
 }: Props) {
-  const [state, setState] = useState<FormState>({
-    slug: initial?.slug ?? "",
-    name: initial?.name ?? "",
-    description: initial?.description ?? "",
-    lore: initial?.lore ?? "",
-    icon: initial?.icon ?? "🏅",
-    rarity: (initial?.rarity as BadgeRarity) ?? "common",
-    criterion_type: (initial?.criterion_type as AchievementCriterionType) ?? "first_order",
-    threshold: initial?.threshold ?? "",
-    min_cities: initial?.min_cities ?? "",
-    n_weeks: initial?.n_weeks ?? "",
-    evaluation_mode: (initial?.evaluation_mode as EvaluationMode) ?? "realtime",
+  const form = useForm<FormInput>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      slug: initial?.slug ?? "",
+      name: initial?.name ?? "",
+      description: initial?.description ?? "",
+      lore: initial?.lore ?? "",
+      icon: initial?.icon ?? "🏅",
+      rarity: initial?.rarity ?? "common",
+      criterion_type: initial?.criterion_type ?? "first_order",
+      threshold: initial?.threshold ?? "",
+      min_cities: initial?.min_cities ?? "",
+      n_weeks: initial?.n_weeks ?? "",
+      evaluation_mode: initial?.evaluation_mode ?? "realtime",
+    },
   });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleNameChange = (name: string) => {
-    setState((prev) => ({
-      ...prev,
-      name,
-      slug: lockSlug || prev.slug ? prev.slug : generateSlug(name),
-    }));
+  const {
+    control,
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = form;
+
+  const criterionType = watch("criterion_type");
+  const slugValue = watch("slug");
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const handleNameChange = (value: string) => {
+    setValue("name", value, { shouldValidate: true, shouldDirty: true });
+    if (!lockSlug && !slugValue) {
+      setValue("slug", generateSlug(value), { shouldValidate: true });
+    }
   };
 
-  const handleCriterionChange = (value: string) => {
+  const handleCriterionChange = (value: AchievementCriterionType) => {
     const opt = CRITERION_OPTIONS.find((o) => o.value === value);
-    setState((prev) => ({
-      ...prev,
-      criterion_type: value as AchievementCriterionType,
-      evaluation_mode: opt?.defaultMode ?? prev.evaluation_mode,
-      threshold: "",
-      min_cities: "",
-      n_weeks: "",
-    }));
+    setValue("criterion_type", value, { shouldValidate: true });
+    setValue("evaluation_mode", opt?.defaultMode ?? "realtime", {
+      shouldValidate: true,
+    });
+    setValue("threshold", "");
+    setValue("min_cities", "");
+    setValue("n_weeks", "");
   };
 
-  const handleSubmit = async () => {
-    const paramError = validateParams(state);
-    if (!state.name.trim()) {
-      setError("Le nom est requis.");
-      return;
-    }
-    if (!state.slug.trim()) {
-      setError("Le slug est requis.");
-      return;
-    }
-    if (paramError) {
-      setError(paramError);
-      return;
-    }
-
-    setError(null);
-    setSubmitting(true);
+  const submit = handleSubmit(async (values) => {
+    setServerError(null);
+    const payload: AchievementBadgePayload = {
+      slug: values.slug.trim(),
+      name: values.name.trim(),
+      description: values.description.trim() || null,
+      lore: values.lore.trim() || null,
+      icon: values.icon.trim() || null,
+      rarity: values.rarity,
+      criterion_type: values.criterion_type,
+      criterion_params: buildCriterionParams(values),
+      evaluation_mode: values.evaluation_mode,
+    };
     try {
-      await onSubmit({
-        slug: state.slug.trim(),
-        name: state.name.trim(),
-        description: state.description.trim() || null,
-        lore: state.lore.trim() || null,
-        icon: state.icon.trim() || null,
-        rarity: state.rarity,
-        criterion_type: state.criterion_type,
-        criterion_params: buildCriterionParams(state),
-        evaluation_mode: state.evaluation_mode,
-      });
+      await onSubmit(payload);
     } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
-    } finally {
-      setSubmitting(false);
+      setServerError(err instanceof Error ? err.message : "Erreur inconnue");
     }
-  };
+  });
 
   return (
-    <div className="space-y-6">
+    <form onSubmit={submit} className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Informations</CardTitle>
@@ -208,46 +253,52 @@ export function AchievementBadgeForm({
           <div className="grid gap-2">
             <Label>Nom</Label>
             <Input
-              value={state.name}
+              {...register("name")}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="ex: Habitué"
             />
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name.message}</p>
+            )}
           </div>
           <div className="grid gap-2">
             <Label>Slug (unique)</Label>
             <Input
-              value={state.slug}
-              onChange={(e) => setState({ ...state, slug: e.target.value })}
+              {...register("slug")}
               placeholder="achievement_orders_10"
               disabled={lockSlug}
               className="font-mono"
             />
+            {errors.slug && (
+              <p className="text-xs text-destructive">{errors.slug.message}</p>
+            )}
           </div>
           <div className="grid gap-2">
             <Label>Icône (emoji)</Label>
-            <Input
-              value={state.icon}
-              onChange={(e) => setState({ ...state, icon: e.target.value })}
-              placeholder="🏅"
-              maxLength={6}
-            />
+            <Input {...register("icon")} placeholder="🏅" maxLength={6} />
           </div>
           <div className="grid gap-2">
             <Label>Description (phrase courte)</Label>
             <Input
-              value={state.description}
-              onChange={(e) => setState({ ...state, description: e.target.value })}
+              {...register("description")}
               placeholder="10 commandes au compteur."
             />
+            {errors.description && (
+              <p className="text-xs text-destructive">
+                {errors.description.message}
+              </p>
+            )}
           </div>
           <div className="grid gap-2">
             <Label>Lore (narratif, 1-2 lignes)</Label>
             <Textarea
-              value={state.lore}
-              onChange={(e) => setState({ ...state, lore: e.target.value })}
+              {...register("lore")}
               rows={3}
               placeholder="Dix coupes, dix signatures sur le registre des Compagnons…"
             />
+            {errors.lore && (
+              <p className="text-xs text-destructive">{errors.lore.message}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -262,81 +313,115 @@ export function AchievementBadgeForm({
         <CardContent className="space-y-4">
           <div className="grid gap-2">
             <Label>Type de critère</Label>
-            <Select
-              value={state.criterion_type}
-              onValueChange={handleCriterionChange}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CRITERION_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              control={control}
+              name="criterion_type"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(v) =>
+                    handleCriterionChange(v as AchievementCriterionType)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CRITERION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
-          {(state.criterion_type === "orders_threshold" ||
-            state.criterion_type === "establishments_threshold") && (
+          {(criterionType === "orders_threshold" ||
+            criterionType === "establishments_threshold") && (
             <div className="grid gap-2">
               <Label>Seuil (≥ 2)</Label>
               <Input
                 type="number"
                 min={2}
-                value={state.threshold}
-                onChange={(e) => setState({ ...state, threshold: e.target.value })}
+                {...register("threshold")}
                 placeholder="10"
               />
+              {errors.threshold && (
+                <p className="text-xs text-destructive">
+                  {errors.threshold.message}
+                </p>
+              )}
             </div>
           )}
 
-          {state.criterion_type === "cities_visited" && (
+          {criterionType === "cities_visited" && (
             <div className="grid gap-2">
               <Label>Nombre minimum de villes (≥ 2)</Label>
               <Input
                 type="number"
                 min={2}
-                value={state.min_cities}
-                onChange={(e) => setState({ ...state, min_cities: e.target.value })}
+                {...register("min_cities")}
                 placeholder="2"
               />
+              {errors.min_cities && (
+                <p className="text-xs text-destructive">
+                  {errors.min_cities.message}
+                </p>
+              )}
             </div>
           )}
 
-          {state.criterion_type === "consecutive_weekly_quests" && (
+          {criterionType === "consecutive_weekly_quests" && (
             <div className="grid gap-2">
               <Label>Nombre de semaines d&apos;affilée (≥ 2)</Label>
               <Input
                 type="number"
                 min={2}
-                value={state.n_weeks}
-                onChange={(e) => setState({ ...state, n_weeks: e.target.value })}
+                {...register("n_weeks")}
                 placeholder="4"
               />
+              {errors.n_weeks && (
+                <p className="text-xs text-destructive">
+                  {errors.n_weeks.message}
+                </p>
+              )}
             </div>
           )}
 
           <div className="grid gap-2">
             <Label>Mode d&apos;évaluation</Label>
-            <Select
-              value={state.evaluation_mode}
-              onValueChange={(v) =>
-                setState({ ...state, evaluation_mode: v as EvaluationMode })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="realtime">Temps réel (hook create_receipt)</SelectItem>
-                <SelectItem value="cron">Cron nocturne (02:00 UTC)</SelectItem>
-              </SelectContent>
-            </Select>
+            <Controller
+              control={control}
+              name="evaluation_mode"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => field.onChange(v as EvaluationMode)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="realtime">
+                      Temps réel (hook create_receipt)
+                    </SelectItem>
+                    <SelectItem value="cron">
+                      Cron nocturne (02:00 UTC)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.evaluation_mode && (
+              <p className="text-xs text-destructive">
+                {errors.evaluation_mode.message}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
-              Les critères de streak (N semaines d&apos;affilée) sont recommandés en mode cron.
+              Les critères de streak (N semaines d&apos;affilée) sont recommandés
+              en mode cron.
             </p>
           </div>
         </CardContent>
@@ -346,48 +431,57 @@ export function AchievementBadgeForm({
         <CardHeader>
           <CardTitle>Rareté</CardTitle>
           <CardDescription>
-            Définie manuellement à la création, modifiable à tout moment ci-dessous.
+            Définie manuellement à la création, modifiable à tout moment.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2">
             <Label>Rareté</Label>
-            <Select
-              value={state.rarity}
-              onValueChange={(v) =>
-                setState({ ...state, rarity: v as BadgeRarity })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RARITY_OPTIONS.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              control={control}
+              name="rarity"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => field.onChange(v as BadgeRarity)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RARITY_OPTIONS.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {error && (
+      {serverError && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+          {serverError}
         </div>
       )}
 
       <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" onClick={onCancel} disabled={submitting}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
           Annuler
         </Button>
-        <Button onClick={handleSubmit} disabled={submitting}>
-          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {submitLabel}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

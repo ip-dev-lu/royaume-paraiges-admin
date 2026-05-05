@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -24,44 +28,103 @@ import {
 import { ArrowLeft, Loader2, User } from "lucide-react";
 import { createManualCoupon, searchCustomers } from "@/lib/services/couponService";
 import { getActiveTemplates } from "@/lib/services/templateService";
-import { useToast } from "@/components/ui/use-toast";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatPercentage } from "@/lib/utils";
 import type { CouponTemplate, Profile } from "@/types/database";
 
+const formSchema = z
+  .object({
+    customerId: z.string().uuid("Sélectionnez un utilisateur"),
+    customerName: z.string(),
+    mode: z.enum(["template", "custom"]),
+    templateId: z.string().optional(),
+    amount: z.string().optional(),
+    percentage: z.string().optional(),
+    expiresAt: z.string().optional(),
+    notes: z.string().max(500).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.mode === "template") {
+      if (!data.templateId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Sélectionnez un template.",
+          path: ["templateId"],
+        });
+      }
+    } else {
+      const amountNum = data.amount ? parseFloat(data.amount) : NaN;
+      const percentageNum = data.percentage ? parseInt(data.percentage, 10) : NaN;
+      const hasAmount = !isNaN(amountNum) && amountNum > 0;
+      const hasPercentage = !isNaN(percentageNum) && percentageNum > 0;
+
+      if (!hasAmount && !hasPercentage) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Renseignez un montant ou un pourcentage.",
+          path: ["amount"],
+        });
+      }
+      if (hasAmount && hasPercentage) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Renseignez soit un montant, soit un pourcentage — pas les deux.",
+          path: ["amount"],
+        });
+      }
+      if (hasPercentage && (percentageNum < 1 || percentageNum > 100)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Le pourcentage doit être entre 1 et 100.",
+          path: ["percentage"],
+        });
+      }
+    }
+  });
+
+type FormInput = z.infer<typeof formSchema>;
+
 export default function CreateCouponPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const supabase = createClient();
 
-  const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<CouponTemplate[]>([]);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const [form, setForm] = useState({
-    customerId: "",
-    customerName: "",
-    mode: "template" as "template" | "custom",
-    templateId: "",
-    amount: "",
-    percentage: "",
-    expiresAt: "",
-    notes: "",
+  const form = useForm<FormInput>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      customerId: "",
+      customerName: "",
+      mode: "template",
+      templateId: "",
+      amount: "",
+      percentage: "",
+      expiresAt: "",
+      notes: "",
+    },
   });
 
+  const {
+    control,
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = form;
+
+  const customerId = watch("customerId");
+  const customerName = watch("customerName");
+  const mode = watch("mode");
+  const templateId = watch("templateId");
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const templatesData = await getActiveTemplates();
-        setTemplates(templatesData || []);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchData();
+    getActiveTemplates()
+      .then((data) => setTemplates(data || []))
+      .catch((err) => console.error(err));
   }, []);
 
   useEffect(() => {
@@ -70,13 +133,9 @@ export default function CreateCouponPage() {
         setSearching(true);
         searchCustomers(searchQuery)
           .then((results) => setSearchResults(results || []))
-          .catch(() => {
-            toast({
-              variant: "destructive",
-              title: "Erreur",
-              description: "Erreur lors de la recherche",
-            });
-          })
+          .catch(() =>
+            toast.error("Erreur", { description: "Erreur lors de la recherche" }),
+          )
           .finally(() => setSearching(false));
       } else if (searchQuery.length === 0) {
         setSearchResults([]);
@@ -90,75 +149,77 @@ export default function CreateCouponPage() {
       `${customer.first_name || ""} ${customer.last_name || ""}`.trim() ||
       customer.email ||
       "Inconnu";
-    setForm({
-      ...form,
-      customerId: customer.id,
-      customerName: name,
-    });
+    setValue("customerId", customer.id, { shouldValidate: true });
+    setValue("customerName", name);
     setSearchResults([]);
     setSearchQuery("");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const clearCustomer = () => {
+    setValue("customerId", "", { shouldValidate: true });
+    setValue("customerName", "");
+  };
 
-    if (!form.customerId) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Sélectionnez un utilisateur",
-      });
-      return;
-    }
+  const onModeChange = (value: "template" | "custom") => {
+    setValue("mode", value);
+    setValue("templateId", "");
+    setValue("amount", "");
+    setValue("percentage", "");
+  };
 
-    setLoading(true);
+  const selectedTemplate = templates.find(
+    (t) => t.id.toString() === templateId,
+  );
 
+  const submit = handleSubmit(async (values) => {
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       await createManualCoupon({
-        customerId: form.customerId,
-        templateId: form.mode === "template" && form.templateId ? parseInt(form.templateId) : undefined,
-        amount: form.mode === "custom" && form.amount ? Math.round(parseFloat(form.amount) * 100) : undefined,
-        percentage: form.mode === "custom" && form.percentage ? parseInt(form.percentage) : undefined,
-        expiresAt: form.expiresAt || undefined,
-        notes: form.notes || undefined,
+        customerId: values.customerId,
+        templateId:
+          values.mode === "template" && values.templateId
+            ? parseInt(values.templateId, 10)
+            : undefined,
+        amount:
+          values.mode === "custom" && values.amount
+            ? Math.round(parseFloat(values.amount) * 100)
+            : undefined,
+        percentage:
+          values.mode === "custom" && values.percentage
+            ? parseInt(values.percentage, 10)
+            : undefined,
+        expiresAt: values.expiresAt || undefined,
+        notes: values.notes || undefined,
         adminId: user?.id,
       });
 
       let successMessage = "Coupon attribué avec succès";
-      if (form.mode === "custom") {
-        if (form.amount) {
-          successMessage = `Bonus cashback de ${form.amount} EUR crédité`;
-        } else if (form.percentage) {
-          successMessage = `Coupon de ${form.percentage}% attribué`;
+      if (values.mode === "custom") {
+        if (values.amount) {
+          successMessage = `Bonus cashback de ${values.amount} EUR crédité`;
+        } else if (values.percentage) {
+          successMessage = `Coupon de ${values.percentage}% attribué`;
         }
-      } else if (form.mode === "template" && selectedTemplate) {
+      } else if (values.mode === "template" && selectedTemplate) {
         if (selectedTemplate.amount) {
-          successMessage = `Bonus cashback de ${formatCurrency(selectedTemplate.amount)} credite`;
+          successMessage = `Bonus cashback de ${formatCurrency(selectedTemplate.amount)} crédité`;
         } else if (selectedTemplate.percentage) {
           successMessage = `Coupon de ${selectedTemplate.percentage}% attribué`;
         }
       }
 
-      toast({ title: successMessage });
+      toast.success(successMessage);
       router.push("/coupons");
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de créer le coupon",
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur", {
+        description: err instanceof Error ? err.message : "Impossible de créer le coupon",
       });
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const selectedTemplate = templates.find(
-    (t) => t.id.toString() === form.templateId
-  );
+  });
 
   return (
     <div className="space-y-6">
@@ -176,7 +237,7 @@ export default function CreateCouponPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={submit}>
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -186,16 +247,16 @@ export default function CreateCouponPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {form.customerId ? (
+              {customerId ? (
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <User className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-medium">{form.customerName}</p>
+                      <p className="font-medium">{customerName}</p>
                       <p className="text-sm text-muted-foreground">
-                        ID: {form.customerId.slice(0, 8)}...
+                        ID: {customerId.slice(0, 8)}...
                       </p>
                     </div>
                   </div>
@@ -203,9 +264,7 @@ export default function CreateCouponPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() =>
-                      setForm({ ...form, customerId: "", customerName: "" })
-                    }
+                    onClick={clearCustomer}
                   >
                     Changer
                   </Button>
@@ -251,6 +310,11 @@ export default function CreateCouponPage() {
                   )}
                 </>
               )}
+              {errors.customerId && (
+                <p className="text-xs text-destructive">
+                  {errors.customerId.message}
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -264,50 +328,69 @@ export default function CreateCouponPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Mode</Label>
-                <Select
-                  value={form.mode}
-                  onValueChange={(value: "template" | "custom") =>
-                    setForm({ ...form, mode: value, templateId: "", amount: "", percentage: "" })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="template">Depuis un template</SelectItem>
-                    <SelectItem value="custom">Valeur personnalisée</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={control}
+                  name="mode"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) =>
+                        onModeChange(v as "template" | "custom")
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="template">
+                          Depuis un template
+                        </SelectItem>
+                        <SelectItem value="custom">
+                          Valeur personnalisée
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
 
-              {form.mode === "template" ? (
+              {mode === "template" ? (
                 <div className="space-y-2">
                   <Label>Template</Label>
-                  <Select
-                    value={form.templateId}
-                    onValueChange={(value) =>
-                      setForm({ ...form, templateId: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.map((template) => (
-                        <SelectItem
-                          key={template.id}
-                          value={template.id.toString()}
-                        >
-                          {template.name} -{" "}
-                          {template.amount
-                            ? formatCurrency(template.amount)
-                            : template.percentage
-                            ? formatPercentage(template.percentage)
-                            : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    control={control}
+                    name="templateId"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templates.map((template) => (
+                            <SelectItem
+                              key={template.id}
+                              value={template.id.toString()}
+                            >
+                              {template.name} -{" "}
+                              {template.amount
+                                ? formatCurrency(template.amount)
+                                : template.percentage
+                                ? formatPercentage(template.percentage)
+                                : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.templateId && (
+                    <p className="text-xs text-destructive">
+                      {errors.templateId.message}
+                    </p>
+                  )}
                   {selectedTemplate && (
                     <p className="text-sm text-muted-foreground">
                       {selectedTemplate.description}{" "}
@@ -326,13 +409,15 @@ export default function CreateCouponPage() {
                     <Input
                       type="number"
                       placeholder="Ex: 5"
-                      value={form.amount}
-                      onChange={(e) =>
-                        setForm({ ...form, amount: e.target.value, percentage: "" })
-                      }
                       min={0.01}
                       step="0.01"
+                      {...register("amount")}
                     />
+                    {errors.amount && (
+                      <p className="text-xs text-destructive">
+                        {errors.amount.message}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       Sera crédité immédiatement au solde cashback
                     </p>
@@ -342,13 +427,15 @@ export default function CreateCouponPage() {
                     <Input
                       type="number"
                       placeholder="Ex: 10"
-                      value={form.percentage}
-                      onChange={(e) =>
-                        setForm({ ...form, percentage: e.target.value, amount: "" })
-                      }
                       min={1}
                       max={100}
+                      {...register("percentage")}
                     />
+                    {errors.percentage && (
+                      <p className="text-xs text-destructive">
+                        {errors.percentage.message}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       Cashback supplémentaire sur la prochaine commande
                     </p>
@@ -368,11 +455,8 @@ export default function CreateCouponPage() {
                   <Label>Date d&apos;expiration (optionnel)</Label>
                   <Input
                     type="date"
-                    value={form.expiresAt}
-                    onChange={(e) =>
-                      setForm({ ...form, expiresAt: e.target.value })
-                    }
                     min={new Date().toISOString().split("T")[0]}
+                    {...register("expiresAt")}
                   />
                 </div>
               </div>
@@ -381,10 +465,14 @@ export default function CreateCouponPage() {
                 <Label>Notes (optionnel)</Label>
                 <Textarea
                   placeholder="Raison de l'attribution, contexte..."
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   rows={3}
+                  {...register("notes")}
                 />
+                {errors.notes && (
+                  <p className="text-xs text-destructive">
+                    {errors.notes.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end gap-4">
@@ -393,16 +481,10 @@ export default function CreateCouponPage() {
                     Annuler
                   </Button>
                 </Link>
-                <Button
-                  type="submit"
-                  disabled={
-                    loading ||
-                    !form.customerId ||
-                    (form.mode === "template" && !form.templateId) ||
-                    (form.mode === "custom" && !form.amount && !form.percentage)
-                  }
-                >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   Attribuer
                 </Button>
               </div>

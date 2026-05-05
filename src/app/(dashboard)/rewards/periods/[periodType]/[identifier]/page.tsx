@@ -299,7 +299,7 @@ export default function PeriodConfigPage() {
                             {tier.rank_from !== tier.rank_to && ` - ${tier.rank_to}`})
                           </span>
                           <span className="text-muted-foreground">
-                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                            { }
                             {(tier as any).coupon_templates?.name || "Pas de coupon"}
                           </span>
                         </div>

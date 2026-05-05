@@ -2,18 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import {
   createAchievementBadge,
   reawardAchievementBadge,
 } from "@/lib/services/achievementBadgeService";
-import { useToast } from "@/components/ui/use-toast";
 import { AchievementBadgeForm } from "../_form/AchievementBadgeForm";
 
 export default function CreateAchievementBadgePage() {
   const router = useRouter();
-  const { toast } = useToast();
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -39,15 +38,12 @@ export default function CreateAchievementBadgePage() {
           const created = await createAchievementBadge(payload);
           try {
             const res = await reawardAchievementBadge(created.id);
-            toast({
-              title: "Badge créé",
+            toast.success("Badge créé", {
               description: `${res.awarded_count} joueur(s) éligible(s) ont reçu ce badge.`,
             });
           } catch (err) {
             console.error(err);
-            toast({
-              variant: "destructive",
-              title: "Badge créé mais réévaluation échouée",
+            toast.error("Badge créé mais réévaluation échouée", {
               description: "Tu peux relancer l'attribution depuis la page d'édition.",
             });
           }

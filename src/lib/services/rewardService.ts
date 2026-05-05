@@ -165,7 +165,7 @@ export async function getDistributionPreview(
   periodIdentifier?: string
 ) {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("get_period_preview", {
     p_period_type: periodType,
     p_period_identifier: periodIdentifier,
@@ -188,7 +188,7 @@ export async function distributeRewards(
     adminId,
   });
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("distribute_period_rewards_v2", {
     p_period_type: input.periodType,
     p_period_identifier: input.periodIdentifier,
@@ -214,7 +214,7 @@ export async function forceDistributeRewards(
     adminId,
   });
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("distribute_period_rewards_v2", {
     p_period_type: input.periodType,
     p_period_identifier: input.periodIdentifier,

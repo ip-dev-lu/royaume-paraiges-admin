@@ -56,7 +56,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user) {
     // Check if user is admin
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: profile } = await (supabase
       .from("profiles") as any)
       .select("role")
