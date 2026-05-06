@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -27,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   getCoupons,
   getBonusCashbackGains,
@@ -192,12 +191,6 @@ export default function RewardsPage() {
             Liste de toutes les récompenses distribuées
           </p>
         </div>
-        <Link href="/coupons/create">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Creer un coupon
-          </Button>
-        </Link>
       </div>
 
       <Card>
