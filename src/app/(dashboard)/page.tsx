@@ -214,12 +214,6 @@ export default function DashboardPage() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/coupons/create">
-              <Button variant="outline" className="w-full justify-between">
-                Créer un coupon manuel
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
             <Link href="/rewards/distribute">
               <Button variant="outline" className="w-full justify-between">
                 Distribuer des récompenses
