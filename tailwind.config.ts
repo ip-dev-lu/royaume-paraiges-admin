@@ -6,6 +6,7 @@ const config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   prefix: "",
   theme: {
@@ -51,6 +52,16 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          foreground: "hsl(var(--gold-foreground))",
+        },
+        bronze: {
+          DEFAULT: "hsl(var(--bronze))",
+          soft: "hsl(var(--bronze-soft))",
+          strong: "hsl(var(--bronze-strong))",
+        },
+        bordeaux: "hsl(var(--bordeaux))",
       },
       borderRadius: {
         lg: "var(--radius)",

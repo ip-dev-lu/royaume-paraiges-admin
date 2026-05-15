@@ -27,22 +27,19 @@ import type { Profile } from "@/types/database";
 const formSchema = z.object({
   customerId: z.string().uuid("Sélectionnez un utilisateur"),
   customerName: z.string(),
-  percentage: z
-    .string()
-    .refine(
-      (v) => {
-        const n = parseInt(v, 10);
-        return !isNaN(n) && n >= 1 && n <= 100;
-      },
-      { message: "Le pourcentage doit être entre 1 et 100." },
-    ),
-  expiresAt: z.string().optional(),
+  amount: z.string().refine(
+    (v) => {
+      const n = parseFloat(v);
+      return !isNaN(n) && n > 0;
+    },
+    { message: "Renseignez un montant > 0." },
+  ),
   notes: z.string().max(500).optional(),
 });
 
 type FormInput = z.infer<typeof formSchema>;
 
-export default function CreateCouponPage() {
+export default function CreateBonusCashbackPage() {
   const router = useRouter();
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -52,8 +49,7 @@ export default function CreateCouponPage() {
     defaultValues: {
       customerId: "",
       customerName: "",
-      percentage: "",
-      expiresAt: "",
+      amount: "",
       notes: "",
     },
   });
@@ -91,20 +87,19 @@ export default function CreateCouponPage() {
 
       await createManualCoupon({
         customerId: values.customerId,
-        percentage: parseInt(values.percentage, 10),
-        expiresAt: values.expiresAt || undefined,
+        amount: Math.round(parseFloat(values.amount) * 100),
         notes: values.notes || undefined,
         adminId: user?.id,
       });
 
       queryClient.invalidateQueries({ queryKey: couponKeys.all });
-      toast.success(`Coupon de ${values.percentage}% attribué`);
-      router.push("/coupons");
+      toast.success(`Bonus cashback de ${values.amount} € crédité`);
+      router.push("/rewards/cashback-gains");
     } catch (err) {
       console.error(err);
       toast.error("Erreur", {
         description:
-          err instanceof Error ? err.message : "Impossible de créer le coupon",
+          err instanceof Error ? err.message : "Impossible de créer le bonus",
       });
     }
   });
@@ -112,15 +107,16 @@ export default function CreateCouponPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/coupons">
+        <Link href="/rewards/cashback-gains">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">Nouveau coupon</h1>
+          <h1 className="text-3xl font-bold">Nouveau bonus cashback</h1>
           <p className="text-muted-foreground">
-            Attribuez un coupon de réduction (%) à un utilisateur.
+            Créditez des Paraiges de Bronze (PdB) directement au solde d&apos;un
+            utilisateur.
           </p>
         </div>
       </div>
@@ -137,26 +133,26 @@ export default function CreateCouponPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Pourcentage</CardTitle>
+              <CardTitle>Montant</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="percentage">Pourcentage (1 à 100)</Label>
+                <Label htmlFor="amount">Montant en euros</Label>
                 <Input
-                  id="percentage"
+                  id="amount"
                   type="number"
-                  placeholder="Ex: 10"
-                  min={1}
-                  max={100}
-                  {...register("percentage")}
+                  placeholder="Ex: 5"
+                  min={0.01}
+                  step="0.01"
+                  {...register("amount")}
                 />
-                {errors.percentage && (
+                {errors.amount && (
                   <p className="text-xs text-destructive">
-                    {errors.percentage.message}
+                    {errors.amount.message}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Cashback supplémentaire appliqué sur la prochaine commande.
+                  Crédité immédiatement au solde cashback (1 € = 100 PdB).
                 </p>
               </div>
             </CardContent>
@@ -164,23 +160,9 @@ export default function CreateCouponPage() {
 
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Options</CardTitle>
+              <CardTitle>Notes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="expiresAt">
-                    Date d&apos;expiration (optionnel)
-                  </Label>
-                  <Input
-                    id="expiresAt"
-                    type="date"
-                    min={new Date().toISOString().split("T")[0]}
-                    {...register("expiresAt")}
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes (optionnel)</Label>
                 <Textarea
@@ -197,7 +179,7 @@ export default function CreateCouponPage() {
               </div>
 
               <div className="flex justify-end gap-4">
-                <Link href="/coupons">
+                <Link href="/rewards/cashback-gains">
                   <Button type="button" variant="outline">
                     Annuler
                   </Button>
@@ -206,7 +188,7 @@ export default function CreateCouponPage() {
                   {isSubmitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Attribuer
+                  Créditer
                 </Button>
               </div>
             </CardContent>

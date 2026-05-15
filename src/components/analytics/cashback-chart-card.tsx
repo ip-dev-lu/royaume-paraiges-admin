@@ -21,10 +21,10 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { DailyCashback } from "@/lib/services/analyticsService";
 
 const SERIES = [
-  { key: "creditedOrganic", label: "Organique", color: "#d97706" },
-  { key: "creditedRewards", label: "Récompenses", color: "#3b82f6" },
-  { key: "spent", label: "Dépensé", color: "#ef4444" },
-  { key: "netBalance", label: "Solde net", color: "#8b5cf6" },
+  { key: "creditedOrganic", label: "Organique", color: "#b8864b" },
+  { key: "creditedRewards", label: "Récompenses", color: "#d9a964" },
+  { key: "spent", label: "Dépensé", color: "#5a0f1a" },
+  { key: "netBalance", label: "Solde net", color: "#475569" },
 ] as const;
 
 interface CashbackChartCardProps {
@@ -120,8 +120,8 @@ export function CashbackChartCard({ data }: CashbackChartCardProps) {
                     type="monotone"
                     dataKey="creditedOrganic"
                     name="Organique"
-                    stroke="#d97706"
-                    fill="#d97706"
+                    stroke="#b8864b"
+                    fill="#b8864b"
                     fillOpacity={0.2}
                   />
                 )}
@@ -130,9 +130,9 @@ export function CashbackChartCard({ data }: CashbackChartCardProps) {
                     type="monotone"
                     dataKey="creditedRewards"
                     name="Récompenses"
-                    stroke="#3b82f6"
-                    fill="#3b82f6"
-                    fillOpacity={0.2}
+                    stroke="#d9a964"
+                    fill="#d9a964"
+                    fillOpacity={0.3}
                   />
                 )}
                 {!hiddenSeries.has("spent") && (
@@ -140,8 +140,8 @@ export function CashbackChartCard({ data }: CashbackChartCardProps) {
                     type="monotone"
                     dataKey="spent"
                     name="Dépensé"
-                    stroke="#ef4444"
-                    fill="#ef4444"
+                    stroke="#5a0f1a"
+                    fill="#5a0f1a"
                     fillOpacity={0.2}
                   />
                 )}
@@ -150,7 +150,7 @@ export function CashbackChartCard({ data }: CashbackChartCardProps) {
                     type="monotone"
                     dataKey="netBalance"
                     name="Solde net"
-                    stroke="#8b5cf6"
+                    stroke="#475569"
                     strokeWidth={2}
                     strokeDasharray="6 3"
                     dot={false}

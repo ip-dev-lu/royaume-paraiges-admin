@@ -65,6 +65,21 @@ import {
   type CouponDrilldownRow,
 } from "@/lib/services/analyticsService";
 import { cn } from "@/lib/utils";
+import { getPaymentMethodConfig } from "@/lib/payment-methods";
+
+function dominantReceiptMethod(
+  card: number,
+  cash: number,
+  cashback: number
+): string | null {
+  const entries: [string, number][] = [
+    ["card", card],
+    ["cash", cash],
+    ["cashback", cashback],
+  ];
+  const max = entries.reduce((m, e) => (e[1] > m[1] ? e : m));
+  return max[1] > 0 ? max[0] : null;
+}
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 250] as const;
 
@@ -219,30 +234,44 @@ function ReceiptDetail({ data }: { data: ReceiptDrilldownRow }) {
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
         Détail du paiement
       </p>
-      <div className="rounded-lg border p-3 space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground">
+      <div className="space-y-2">
+        <div
+          className={cn(
+            "flex items-center justify-between rounded-md border px-3 py-2 text-sm",
+            getPaymentMethodConfig("card").badgeClass
+          )}
+        >
+          <span className="flex items-center gap-2 font-medium">
             <CreditCard className="h-3.5 w-3.5" />
             Carte
           </span>
-          <Cur value={data.card_total} />
+          <Cur value={data.card_total} className="font-semibold" />
         </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground">
+        <div
+          className={cn(
+            "flex items-center justify-between rounded-md border px-3 py-2 text-sm",
+            getPaymentMethodConfig("cash").badgeClass
+          )}
+        >
+          <span className="flex items-center gap-2 font-medium">
             <Banknote className="h-3.5 w-3.5" />
             Espèces
           </span>
-          <Cur value={data.cash_total} />
+          <Cur value={data.cash_total} className="font-semibold" />
         </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground">
+        <div
+          className={cn(
+            "flex items-center justify-between rounded-md border px-3 py-2 text-sm",
+            getPaymentMethodConfig("cashback").badgeClass
+          )}
+        >
+          <span className="flex items-center gap-2 font-medium">
             <Coins className="h-3.5 w-3.5" />
             PdB (cashback)
           </span>
-          <Cur value={data.cashback_spent} className="text-amber-600" />
+          <Cur value={data.cashback_spent} className="font-semibold" />
         </div>
-        <Separator />
-        <div className="flex items-center justify-between text-sm font-semibold">
+        <div className="flex items-center justify-between rounded-md border bg-muted px-3 py-2 text-sm font-semibold">
           <span>Total</span>
           <span>{formatCurrency(data.total)}</span>
         </div>
@@ -300,7 +329,7 @@ function SpendingDetail({ data }: { data: SpendingDrilldownRow }) {
         icon={<Coins className="h-4 w-4" />}
         label="Montant dépensé (PdB)"
       >
-        <span className="text-lg font-bold text-amber-600">
+        <span className="text-lg font-bold text-bronze">
           {formatCurrency(data.amount)}
         </span>
       </DetailField>
@@ -358,7 +387,7 @@ function GainDetail({ data }: { data: GainDrilldownRow }) {
             <Coins className="h-3.5 w-3.5" />
             Cashback gagné
           </span>
-          <Cur value={data.cashback_money} className="text-amber-600" />
+          <Cur value={data.cashback_money} className="text-bronze" />
         </div>
       </div>
     </div>
@@ -791,7 +820,14 @@ function ReceiptsTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data.map((r, i) => (
+        {data.map((r, i) => {
+          const dominant = dominantReceiptMethod(
+            r.card_total,
+            r.cash_total,
+            r.cashback_spent
+          );
+          const totalConfig = dominant ? getPaymentMethodConfig(dominant) : null;
+          return (
           <TableRow
             key={r.id}
             className={cn(
@@ -819,16 +855,52 @@ function ReceiptsTable({
             </TableCell>
             <TableCell>{r.employee_name}</TableCell>
             <TableCell className="text-right">
-              <Cur value={r.card_total} />
+              {r.card_total > 0 ? (
+                <Badge
+                  variant="outline"
+                  className={cn(getPaymentMethodConfig("card").badgeClass)}
+                >
+                  <Cur value={r.card_total} />
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
             </TableCell>
             <TableCell className="text-right">
-              <Cur value={r.cash_total} />
+              {r.cash_total > 0 ? (
+                <Badge
+                  variant="outline"
+                  className={cn(getPaymentMethodConfig("cash").badgeClass)}
+                >
+                  <Cur value={r.cash_total} />
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
             </TableCell>
             <TableCell className="text-right">
-              <Cur value={r.cashback_spent} className="text-amber-600" />
+              {r.cashback_spent > 0 ? (
+                <Badge
+                  variant="outline"
+                  className={cn(getPaymentMethodConfig("cashback").badgeClass)}
+                >
+                  <Cur value={r.cashback_spent} />
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
             </TableCell>
             <TableCell className="text-right font-medium">
-              <Cur value={r.total} />
+              {totalConfig ? (
+                <Badge
+                  variant="outline"
+                  className={cn("font-semibold", totalConfig.badgeClass)}
+                >
+                  <Cur value={r.total} />
+                </Badge>
+              ) : (
+                <Cur value={r.total} />
+              )}
             </TableCell>
             <TableCell>
               {r.consumption_items.length > 0 ? (
@@ -844,7 +916,8 @@ function ReceiptsTable({
               )}
             </TableCell>
           </TableRow>
-        ))}
+          );
+        })}
       </TableBody>
     </Table>
   );
@@ -895,7 +968,12 @@ function SpendingsTable({
               />
             </TableCell>
             <TableCell className="text-right">
-              <Cur value={r.amount} className="text-amber-600" />
+              <Badge
+                variant="outline"
+                className={cn(getPaymentMethodConfig("cashback").badgeClass)}
+              >
+                <Cur value={r.amount} />
+              </Badge>
             </TableCell>
           </TableRow>
         ))}
@@ -953,7 +1031,7 @@ function GainsOrganicTable({
               <Num value={r.xp} />
             </TableCell>
             <TableCell className="text-right">
-              <Cur value={r.cashback_money} className="text-amber-600" />
+              <Cur value={r.cashback_money} className="text-bronze" />
             </TableCell>
           </TableRow>
         ))}
@@ -1004,7 +1082,7 @@ function GainsRewardsTable({
             <TableCell>{sourceLabel(r.source_type)}</TableCell>
             <TableCell>{r.period_identifier || "\u2014"}</TableCell>
             <TableCell className="text-right">
-              <Cur value={r.cashback_money} className="text-amber-600" />
+              <Cur value={r.cashback_money} className="text-bronze" />
             </TableCell>
           </TableRow>
         ))}
@@ -1064,7 +1142,7 @@ function GainsAllTable({
               <Num value={r.xp} />
             </TableCell>
             <TableCell className="text-right">
-              <Cur value={r.cashback_money} className="text-amber-600" />
+              <Cur value={r.cashback_money} className="text-bronze" />
             </TableCell>
           </TableRow>
         ))}

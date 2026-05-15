@@ -327,9 +327,8 @@ export default function AnalyticsPage() {
                 />
                 <StatCard
                   title="PdB dépensés"
-                  icon={<Coins className="h-4 w-4 text-amber-500" />}
+                  icon={<Coins className="h-4 w-4 text-bronze" />}
                   value={formatCurrency(revenue?.cashbackSpentTotal ?? 0)}
-                  valueClassName="text-amber-600"
                   subtitle="Utilisés sur les commandes Royaume"
                   onClick={() => openDrilldown("spendings", "PdB dépensés")}
                 />
@@ -346,8 +345,8 @@ export default function AnalyticsPage() {
             <h2 className="text-xl font-semibold">Dettes</h2>
 
             {hasFilter && (
-              <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                <Info className="h-4 w-4 shrink-0" />
+              <div className="flex items-center gap-2 rounded-md border border-border bg-accent p-3 text-sm text-accent-foreground">
+                <Info className="h-4 w-4 shrink-0 text-bronze" />
                 <span>
                   Les PdB Récompenses ne sont pas filtrables par établissement ou employé.
                   Seuls les PdB Organiques sont filtrés.
@@ -359,17 +358,15 @@ export default function AnalyticsPage() {
               <div className="grid gap-4 grid-cols-2">
                 <StatCard
                   title="PdB Organiques"
-                  icon={<TrendingUp className="h-4 w-4 text-amber-500" />}
+                  icon={<TrendingUp className="h-4 w-4 text-bronze" />}
                   value={formatCurrency(debts?.pdbOrganic ?? 0)}
-                  valueClassName="text-amber-600"
                   subtitle="Dépenses euros"
                   onClick={() => openDrilldown("gainsOrganic", "PdB Organiques")}
                 />
                 <StatCard
                   title="PdB Récompenses"
-                  icon={<Trophy className="h-4 w-4 text-blue-500" />}
+                  icon={<Trophy className="h-4 w-4 text-gold" />}
                   value={formatCurrency(debts?.pdbRewards ?? 0)}
-                  valueClassName="text-blue-600"
                   subtitle="Quêtes et classement"
                   onClick={() => openDrilldown("gainsRewards", "PdB Récompenses")}
                 />
@@ -400,8 +397,8 @@ export default function AnalyticsPage() {
             <h2 className="text-xl font-semibold">Cashback & Stock PdB</h2>
 
             {stock?.hasFilter && (
-              <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                <Info className="h-4 w-4 shrink-0" />
+              <div className="flex items-center gap-2 rounded-md border border-border bg-accent p-3 text-sm text-accent-foreground">
+                <Info className="h-4 w-4 shrink-0 text-bronze" />
                 <span>
                   Filtre par établissement actif : seuls les PdB Organiques sont pris en compte.
                 </span>
@@ -418,7 +415,7 @@ export default function AnalyticsPage() {
                 />
                 <StatCard
                   title="Stock PdB fin de période"
-                  icon={<Coins className="h-4 w-4 text-amber-500" />}
+                  icon={<Coins className="h-4 w-4 text-bronze" />}
                   value={formatCurrency(stock?.closing.total ?? 0)}
                   subtitle="Fin de période"
                 />

@@ -20,9 +20,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Shield,
-  CalendarClock,
-  Medal,
   Activity,
+  Scale,
+  Coins,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,35 +44,35 @@ const navigationGroups = [
     ],
   },
   {
-    title: "Utilisateurs",
+    title: "Activité",
     items: [
-      { name: "Liste des utilisateurs", href: "/users", icon: Users },
-    ],
-  },
-  {
-    title: "Transactions",
-    items: [
+      { name: "Utilisateurs", href: "/users", icon: Users },
       { name: "Tickets de caisse", href: "/receipts", icon: Receipt },
+      { name: "Réconciliation Cashpad", href: "/reconciliation", icon: Scale },
     ],
   },
   {
-    title: "Recompenses",
+    title: "Quêtes",
     items: [
-      { name: "Recompenses", href: "/coupons", icon: Ticket },
-      { name: "Templates", href: "/templates", icon: FileText },
-      { name: "Tiers", href: "/rewards", icon: Trophy },
-      { name: "Badges succès", href: "/rewards/achievements", icon: Medal },
-      { name: "Cloture saison", href: "/rewards/season", icon: CalendarClock },
-      { name: "Quetes", href: "/quests", icon: Target },
-      { name: "Sante des quetes", href: "/quests/health", icon: Activity },
+      { name: "Quêtes", href: "/quests", icon: Target },
+      { name: "Santé des quêtes", href: "/quests/health", icon: Activity },
+    ],
+  },
+  {
+    title: "Récompenses",
+    items: [
+      { name: "Coupons", href: "/coupons", icon: Ticket },
+      { name: "Bonus cashback", href: "/rewards/cashback-gains", icon: Coins },
+      { name: "Configuration", href: "/rewards", icon: Trophy },
+      { name: "Modèles de coupons", href: "/templates", icon: FileText },
       { name: "Historique", href: "/history", icon: History },
     ],
   },
   {
     title: "Contenu",
     items: [
-      { name: "Etablissements", href: "/content/establishments", icon: Building2 },
-      { name: "Bieres", href: "/content/beers", icon: Beer },
+      { name: "Bières", href: "/content/beers", icon: Beer },
+      { name: "Établissements", href: "/content/establishments", icon: Building2 },
       { name: "Storytelling", href: "/content/storytelling", icon: BookOpen },
     ],
   },
@@ -83,7 +83,7 @@ const navigationGroups = [
     ],
   },
   {
-    title: "Conformite",
+    title: "Conformité",
     items: [
       { name: "RGPD", href: "/gdpr", icon: Shield },
     ],
@@ -97,7 +97,7 @@ const navigationGroups = [
   {
     title: null,
     items: [
-      { name: "Parametres", href: "/settings", icon: SettingsIcon },
+      { name: "Paramètres", href: "/settings", icon: SettingsIcon },
     ],
   },
 ];
@@ -163,9 +163,9 @@ export function Sidebar({
       {/* Navigation */}
       <nav className={cn("flex-1 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}>
         {navigationGroups.map((group, groupIndex) => (
-          <div key={groupIndex} className={cn(groupIndex > 0 && "mt-4")}>
+          <div key={groupIndex} className={cn(groupIndex > 0 && "mt-6")}>
             {group.title && !collapsed && (
-              <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-foreground">
                 {group.title}
               </h3>
             )}
@@ -236,7 +236,7 @@ export function Sidebar({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              Deconnexion
+              Déconnexion
             </TooltipContent>
           </Tooltip>
         ) : (
@@ -246,7 +246,7 @@ export function Sidebar({
             onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4" />
-            Deconnexion
+            Déconnexion
           </Button>
         )}
 
@@ -276,7 +276,7 @@ export function Sidebar({
                 onClick={onToggle}
               >
                 <ChevronsLeft className="h-4 w-4" />
-                Reduire
+                Réduire
               </Button>
             )}
           </>

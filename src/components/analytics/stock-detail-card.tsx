@@ -44,7 +44,7 @@ export function StockDetailCard({ stock }: StockDetailCardProps) {
             <TableRow>
               <TableCell className="font-medium">
                 <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="h-2 w-2 rounded-full bg-bronze" />
                   PdB Organiques
                 </span>
               </TableCell>
@@ -68,7 +68,7 @@ export function StockDetailCard({ stock }: StockDetailCardProps) {
             <TableRow>
               <TableCell className="font-medium">
                 <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span className="h-2 w-2 rounded-full bg-gold" />
                   PdB Récompenses
                 </span>
               </TableCell>

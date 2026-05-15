@@ -93,22 +93,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { formatCurrency, formatPercentage, formatDate, formatDateTime } from "@/lib/utils";
+import { cn, formatCurrency, formatPercentage, formatDate, formatDateTime } from "@/lib/utils";
+import { getPaymentMethodConfig } from "@/lib/payment-methods";
 import type { UserRole } from "@/types/database";
-
-const paymentMethodLabels: Record<string, string> = {
-  card: "Carte",
-  cash: "Espèces",
-  cashback: "Cashback",
-  coupon: "Coupon",
-};
-
-const paymentMethodIcons: Record<string, React.ReactNode> = {
-  card: <CreditCard className="h-3 w-3" />,
-  cash: <Banknote className="h-3 w-3" />,
-  cashback: <TrendingUp className="h-3 w-3" />,
-  coupon: <Ticket className="h-3 w-3" />,
-};
 
 const consumptionTypeLabels: Record<string, string> = {
   cocktail: "Cocktail",
@@ -1279,29 +1266,47 @@ export default function UserDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {receipts.map((receipt) => (
+                      {receipts.map((receipt) => {
+                        const dominantMethod =
+                          receipt.receipt_lines && receipt.receipt_lines.length > 0
+                            ? receipt.receipt_lines.reduce((max, line) =>
+                                line.amount > max.amount ? line : max
+                              ).payment_method
+                            : null;
+                        const amountConfig = dominantMethod
+                          ? getPaymentMethodConfig(dominantMethod)
+                          : null;
+                        return (
                         <TableRow key={receipt.id}>
                           <TableCell className="font-mono text-sm">#{receipt.id}</TableCell>
                           <TableCell>
                             {receipt.establishment?.title || `Établissement #${receipt.establishment_id}`}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="default">{formatCurrency(receipt.amount)}</Badge>
+                            <Badge
+                              variant="outline"
+                              className={cn("font-semibold", amountConfig?.badgeClass)}
+                            >
+                              {formatCurrency(receipt.amount)}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {receipt.receipt_lines && receipt.receipt_lines.length > 0 ? (
                                 [...new Set(receipt.receipt_lines.map((line) => line.payment_method))].map(
-                                  (method) => (
-                                    <Badge
-                                      key={method}
-                                      variant="outline"
-                                      className="flex items-center gap-1"
-                                    >
-                                      {paymentMethodIcons[method]}
-                                      {paymentMethodLabels[method] || method}
-                                    </Badge>
-                                  )
+                                  (method) => {
+                                    const config = getPaymentMethodConfig(method);
+                                    return (
+                                      <Badge
+                                        key={method}
+                                        variant="outline"
+                                        className={cn("flex items-center gap-1", config.badgeClass)}
+                                      >
+                                        {config.icon}
+                                        {config.label}
+                                      </Badge>
+                                    );
+                                  }
                                 )
                               ) : (
                                 <span className="text-muted-foreground">-</span>
@@ -1325,7 +1330,8 @@ export default function UserDetailPage() {
                             {formatDateTime(receipt.created_at)}
                           </TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
 

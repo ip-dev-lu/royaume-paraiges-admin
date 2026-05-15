@@ -6,6 +6,7 @@ import type { Profile } from "@/types/database";
 import { User, Menu, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const roleConfig: Record<string, { label: string; className: string }> = {
   admin: { label: "Admin", className: "bg-violet-100 text-violet-700 border-violet-200" },
@@ -55,8 +56,11 @@ export function Header({ mobile = false, onMenuClick }: HeaderProps) {
           <Trophy className="h-5 w-5" />
           <span className="text-sm">Royaume Admin</span>
         </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <User className="h-4 w-4" />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <User className="h-4 w-4" />
+          </div>
         </div>
       </header>
     );
@@ -66,6 +70,7 @@ export function Header({ mobile = false, onMenuClick }: HeaderProps) {
     <header className="flex h-16 items-center justify-between border-b bg-background px-6">
       <div />
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <div className="flex items-center gap-2 text-sm">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <User className="h-4 w-4" />

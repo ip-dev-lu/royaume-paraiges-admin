@@ -20,8 +20,8 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { DailyRevenue } from "@/lib/services/analyticsService";
 
 const SERIES = [
-  { key: "cashpad", label: "Cashpad", color: "#3b82f6" },
-  { key: "pdbSpent", label: "PdB dépensés", color: "#d97706" },
+  { key: "cashpad", label: "Cashpad", color: "#b8864b" },
+  { key: "pdbSpent", label: "PdB dépensés", color: "#5a0f1a" },
 ] as const;
 
 interface RevenueChartCardProps {
@@ -114,8 +114,8 @@ export function RevenueChartCard({ data }: RevenueChartCardProps) {
                     type="monotone"
                     dataKey="cashpad"
                     name="Cashpad"
-                    stroke="#3b82f6"
-                    fill="#3b82f6"
+                    stroke="#b8864b"
+                    fill="#b8864b"
                     fillOpacity={0.2}
                   />
                 )}
@@ -124,8 +124,8 @@ export function RevenueChartCard({ data }: RevenueChartCardProps) {
                     type="monotone"
                     dataKey="pdbSpent"
                     name="PdB dépensés"
-                    stroke="#d97706"
-                    fill="#d97706"
+                    stroke="#5a0f1a"
+                    fill="#5a0f1a"
                     fillOpacity={0.2}
                   />
                 )}

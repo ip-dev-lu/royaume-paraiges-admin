@@ -18,9 +18,9 @@ import { formatCurrency } from "@/lib/utils";
 import type { DebtsData } from "@/lib/services/analyticsService";
 
 const COLORS = {
-  organic: "#d97706",
-  rewards: "#3b82f6",
-  bonusCoupons: "#10b981",
+  organic: "#b8864b",
+  rewards: "#d9a964",
+  bonusCoupons: "#5a0f1a",
 };
 
 interface DebtsDonutCardProps {

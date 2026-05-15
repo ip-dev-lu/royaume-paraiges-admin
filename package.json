@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:run": "vitest run",
-    "supabase:types": "npx supabase gen types typescript --project-id uflgfsoekkgegdgecubb > src/types/database.generated.ts.tmp && mv src/types/database.generated.ts.tmp src/types/database.generated.ts && echo '✅ Types régénérés dans database.generated.ts — helpers manuels dans database.helpers.ts préservés.'"
+    "supabase:types": "npx supabase gen types typescript --project-id kioysoveqemzjolfwpnu > src/types/database.generated.ts.tmp && mv src/types/database.generated.ts.tmp src/types/database.generated.ts && echo '✅ Types régénérés dans database.generated.ts — helpers manuels dans database.helpers.ts préservés.'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -39,6 +39,7 @@
     "date-fns": "^4.1.0",
     "lucide-react": "^0.469.0",
     "next": "^16.1.4",
+    "next-themes": "^0.4.6",
     "react": "^19.2.3",
     "react-day-picker": "^9.13.2",
     "react-dom": "^19.2.3",

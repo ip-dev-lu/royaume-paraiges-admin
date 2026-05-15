@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Receipt, TrendingUp, CreditCard, Banknote, Ticket } from "lucide-react";
+import { Loader2, Receipt, TrendingUp } from "lucide-react";
 import {
   getReceipts,
   getReceiptStats,
@@ -35,22 +35,16 @@ import {
   type ReceiptWithDetails,
 } from "@/lib/services/receiptService";
 import { getEstablishments, type Establishment } from "@/lib/services/contentService";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import { getPaymentMethodConfig } from "@/lib/payment-methods";
+
+function startOfCurrentMonthIso(): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
 import { useToast } from "@/components/ui/use-toast";
-
-const paymentMethodLabels: Record<string, string> = {
-  card: "Carte",
-  cash: "Espèces",
-  cashback: "Cashback",
-  coupon: "Coupon",
-};
-
-const paymentMethodIcons: Record<string, React.ReactNode> = {
-  card: <CreditCard className="h-4 w-4" />,
-  cash: <Banknote className="h-4 w-4" />,
-  cashback: <TrendingUp className="h-4 w-4" />,
-  coupon: <Ticket className="h-4 w-4" />,
-};
 
 const consumptionTypeLabels: Record<string, string> = {
   cocktail: "Cocktail",
@@ -115,7 +109,7 @@ export default function ReceiptsPage() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold">Tickets de caisse</h1>
         <p className="text-muted-foreground">
@@ -123,134 +117,176 @@ export default function ReceiptsPage() {
         </p>
       </div>
 
-      {stats && (
-        <>
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total tickets
-                </CardTitle>
-                <Receipt className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalReceipts}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">CA total</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(stats.totalRevenue)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Panier moyen</CardTitle>
-                <Receipt className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(Math.round(stats.averageAmount))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  CA ce mois
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(stats.revenueThisMonth)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.receiptsThisMonth} tickets
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-6 md:flex-row">
+        <aside className="space-y-6 md:h-full md:w-80 md:shrink-0 md:overflow-y-auto md:pr-1">
+          {stats && (
+            <section className="space-y-2">
+              <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-foreground">
+                Activité
+              </h2>
+              <div className="space-y-2">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                      Total tickets
+                    </CardTitle>
+                    <Receipt className="h-3.5 w-3.5 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    <div className="text-xl font-bold">{stats.totalReceipts}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                      CA total
+                    </CardTitle>
+                    <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    <div className="text-xl font-bold">
+                      {formatCurrency(stats.totalRevenue)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                      Panier moyen
+                    </CardTitle>
+                    <Receipt className="h-3.5 w-3.5 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    <div className="text-xl font-bold">
+                      {formatCurrency(Math.round(stats.averageAmount))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+          )}
 
-          {stats.paymentMethodBreakdown.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Répartition par moyen de paiement</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-4">
-                  {stats.paymentMethodBreakdown.map((item) => (
-                    <div
+          {stats && (
+            <section className="space-y-2">
+              <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-foreground">
+                Ce mois
+              </h2>
+              <Card
+                onClick={() => {
+                  setPage(0);
+                  setFilters((prev) => ({
+                    ...prev,
+                    dateFrom: prev.dateFrom ? undefined : startOfCurrentMonthIso(),
+                  }));
+                }}
+                className={cn(
+                  "cursor-pointer transition-colors hover:bg-accent",
+                  filters.dateFrom && "border-primary bg-primary/5 hover:bg-primary/10"
+                )}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">
+                    CA ce mois
+                  </CardTitle>
+                  <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="text-xl font-bold">
+                    {formatCurrency(stats.revenueThisMonth)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.receiptsThisMonth} ticket{stats.receiptsThisMonth > 1 ? "s" : ""}
+                  </p>
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {stats && stats.paymentMethodBreakdown.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-foreground">
+                Paiements
+              </h2>
+              <div className="space-y-2">
+                {stats.paymentMethodBreakdown.map((item) => {
+                  const isActive = filters.paymentMethod === item.method;
+                  const config = getPaymentMethodConfig(item.method);
+                  return (
+                    <Card
                       key={item.method}
-                      className="flex items-center gap-3 rounded-lg border p-4"
+                      onClick={() => {
+                        setPage(0);
+                        setFilters((prev) => ({
+                          ...prev,
+                          paymentMethod:
+                            prev.paymentMethod === item.method ? undefined : item.method,
+                        }));
+                      }}
+                      className={cn(
+                        "cursor-pointer transition-colors hover:bg-accent",
+                        isActive && "border-primary bg-primary/5 hover:bg-primary/10"
+                      )}
                     >
-                      <div className="rounded-full bg-primary/10 p-2">
-                        {paymentMethodIcons[item.method] || <Receipt className="h-4 w-4" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {paymentMethodLabels[item.method] || item.method}
-                        </p>
-                        <p className="text-lg font-bold">
-                          {formatCurrency(item.total)}
-                        </p>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                        <CardTitle className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                          <span className={cn("h-2 w-2 rounded-full", config.dotClass)} />
+                          {config.label}
+                        </CardTitle>
+                        <span className={config.iconColor}>{config.icon}</span>
+                      </CardHeader>
+                      <CardContent className="p-3 pt-0">
+                        <div className="text-xl font-bold">{formatCurrency(item.total)}</div>
                         <p className="text-xs text-muted-foreground">
                           {item.count} transaction{item.count > 1 ? "s" : ""}
                         </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
           )}
-        </>
-      )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Liste des tickets</CardTitle>
-              <CardDescription>
-                {total} ticket{total > 1 ? "s" : ""} au total
-              </CardDescription>
-            </div>
-            <div className="w-full sm:w-64">
-              <Select
-                value={filters.establishmentId?.toString() || "all"}
-                onValueChange={(value) => {
-                  setPage(0);
-                  setFilters({
-                    ...filters,
-                    establishmentId: value === "all" ? undefined : parseInt(value),
-                  });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filtrer par établissement" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les établissements</SelectItem>
-                  {establishments.map((establishment) => (
-                    <SelectItem
-                      key={establishment.id}
-                      value={establishment.id.toString()}
-                    >
-                      {establishment.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
+          <section className="space-y-2">
+            <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-foreground">
+              Filtres
+            </h2>
+            <Select
+              value={filters.establishmentId?.toString() || "all"}
+              onValueChange={(value) => {
+                setPage(0);
+                setFilters({
+                  ...filters,
+                  establishmentId: value === "all" ? undefined : parseInt(value),
+                });
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Filtrer par établissement" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les établissements</SelectItem>
+                {establishments.map((establishment) => (
+                  <SelectItem
+                    key={establishment.id}
+                    value={establishment.id.toString()}
+                  >
+                    {establishment.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </section>
+        </aside>
+
+        <Card className="flex min-h-0 flex-1 flex-col md:h-full md:overflow-hidden">
+          <CardHeader>
+            <CardTitle>Liste des tickets</CardTitle>
+            <CardDescription>
+              {total} ticket{total > 1 ? "s" : ""} au total
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex min-h-0 flex-1 flex-col md:overflow-hidden">
           {loading ? (
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -261,20 +297,31 @@ export default function ReceiptsPage() {
             </div>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Établissement</TableHead>
-                    <TableHead>Montant</TableHead>
-                    <TableHead>Paiement</TableHead>
-                    <TableHead>Consommations</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {receipts.map((receipt) => (
+              <div className="min-h-0 flex-1 md:overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Établissement</TableHead>
+                      <TableHead>Montant</TableHead>
+                      <TableHead>Paiement</TableHead>
+                      <TableHead>Consommations</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                  {receipts.map((receipt) => {
+                    const dominantMethod =
+                      receipt.receipt_lines && receipt.receipt_lines.length > 0
+                        ? receipt.receipt_lines.reduce((max, line) =>
+                            line.amount > max.amount ? line : max
+                          ).payment_method
+                        : null;
+                    const amountConfig = dominantMethod
+                      ? getPaymentMethodConfig(dominantMethod)
+                      : null;
+                    return (
                     <TableRow key={receipt.id}>
                       <TableCell className="font-mono text-sm">
                         #{receipt.id}
@@ -300,7 +347,13 @@ export default function ReceiptsPage() {
                         {getEstablishmentName(receipt.establishment_id)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="default">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-semibold",
+                            amountConfig?.badgeClass
+                          )}
+                        >
                           {formatCurrency(receipt.amount)}
                         </Badge>
                       </TableCell>
@@ -308,16 +361,19 @@ export default function ReceiptsPage() {
                         <div className="flex flex-wrap gap-1">
                           {receipt.receipt_lines && receipt.receipt_lines.length > 0 ? (
                             [...new Set(receipt.receipt_lines.map((line) => line.payment_method))].map(
-                              (method) => (
-                                <Badge
-                                  key={method}
-                                  variant="outline"
-                                  className="flex items-center gap-1"
-                                >
-                                  {paymentMethodIcons[method]}
-                                  {paymentMethodLabels[method] || method}
-                                </Badge>
-                              )
+                              (method) => {
+                                const config = getPaymentMethodConfig(method);
+                                return (
+                                  <Badge
+                                    key={method}
+                                    variant="outline"
+                                    className={cn("flex items-center gap-1", config.badgeClass)}
+                                  >
+                                    {config.icon}
+                                    {config.label}
+                                  </Badge>
+                                );
+                              }
                             )
                           ) : (
                             <span className="text-muted-foreground">-</span>
@@ -341,12 +397,14 @@ export default function ReceiptsPage() {
                         {formatDateTime(receipt.created_at)}
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                    );
+                  })}
+                  </TableBody>
+                </Table>
+              </div>
 
               {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between">
+                <div className="mt-4 flex shrink-0 items-center justify-between">
                   <p className="text-sm text-muted-foreground">
                     Page {page + 1} sur {totalPages}
                   </p>
@@ -374,6 +432,7 @@ export default function ReceiptsPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
