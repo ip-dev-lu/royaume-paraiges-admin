@@ -42,3 +42,12 @@ next-env.d.ts
 
 # Claude
 .claude
+
+# MCP local config
+.mcp.json
+
+# Supabase CLI local (config + functions / migrations locales non utilisées ici)
+/supabase/
+
+# Generated types intermediate file (script supabase:types écrit en .tmp puis renomme)
+*.generated.ts.tmp
