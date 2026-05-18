@@ -6,7 +6,6 @@ export interface ReceiptFilters {
   establishmentId?: number;
   dateFrom?: string;
   dateTo?: string;
-  paymentMethod?: string;
 }
 
 export interface ReceiptWithDetails extends Receipt {
@@ -28,17 +27,13 @@ export async function getReceipts(
 ): Promise<{ data: ReceiptWithDetails[]; count: number }> {
   const supabase = createClient();
 
-  const receiptLinesSelect = filters?.paymentMethod
-    ? "receipt_lines!inner(id, amount, payment_method)"
-    : "receipt_lines(id, amount, payment_method)";
-
   let query = supabase
     .from("receipts")
     .select(
       `
       *,
       customer:profiles!customer_id(id, email, first_name, last_name),
-      ${receiptLinesSelect},
+      receipt_lines(id, amount, payment_method),
       receipt_consumption_items(id, consumption_type, quantity)
     `,
       { count: "exact" }
@@ -59,10 +54,6 @@ export async function getReceipts(
 
   if (filters?.dateTo) {
     query = query.lte("created_at", filters.dateTo);
-  }
-
-  if (filters?.paymentMethod) {
-    query = query.eq("receipt_lines.payment_method", filters.paymentMethod);
   }
 
   query = query.range(offset, offset + limit - 1);

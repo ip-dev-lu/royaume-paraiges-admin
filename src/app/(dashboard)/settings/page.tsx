@@ -1,13 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -19,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Save, Percent, Wallet, Utensils } from "lucide-react";
 import { StatCard } from "@/components/stat-card";
 import {
@@ -29,12 +23,8 @@ import {
   getAvgTicket12m,
   type QuestReferencePrices,
 } from "@/lib/services/adminSettingsService";
-import { adminSettingsKeys } from "@/lib/queries/keys";
 
-const REFERENCE_PRICE_TYPES: {
-  key: keyof QuestReferencePrices;
-  label: string;
-}[] = [
+const REFERENCE_PRICE_TYPES: { key: keyof QuestReferencePrices; label: string }[] = [
   { key: "biere", label: "Bière" },
   { key: "cocktail", label: "Cocktail" },
   { key: "alcool", label: "Alcool" },
@@ -55,96 +45,63 @@ function eurosToCents(value: string): number | null {
 }
 
 export default function SettingsPage() {
-  const { data: ratio, isLoading: ratioLoading } = useQuery({
-    queryKey: adminSettingsKeys.questAlertRatio(),
-    queryFn: getQuestAlertRatioPct,
+  const { toast } = useToast();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [ratioPct, setRatioPct] = useState("10");
+  const [prices, setPrices] = useState<Record<keyof QuestReferencePrices, string>>({
+    biere: "",
+    cocktail: "",
+    alcool: "",
+    soft: "",
+    boisson_chaude: "",
+    restauration: "",
+  });
+  const [avgTicket, setAvgTicket] = useState<{ cents: number; sample: number }>({
+    cents: 0,
+    sample: 0,
   });
 
-  const { data: refPrices, isLoading: pricesLoading } = useQuery({
-    queryKey: adminSettingsKeys.questReferencePrices(),
-    queryFn: getQuestReferencePrices,
-  });
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [ratio, refPrices, avg] = await Promise.all([
+          getQuestAlertRatioPct(),
+          getQuestReferencePrices(),
+          getAvgTicket12m(),
+        ]);
+        setRatioPct(String(ratio));
+        setPrices({
+          biere: centsToEuros(refPrices.biere),
+          cocktail: centsToEuros(refPrices.cocktail),
+          alcool: centsToEuros(refPrices.alcool),
+          soft: centsToEuros(refPrices.soft),
+          boisson_chaude: centsToEuros(refPrices.boisson_chaude),
+          restauration: centsToEuros(refPrices.restauration),
+        });
+        setAvgTicket({ cents: avg.avg_ticket_cents, sample: avg.sample_size });
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Impossible de charger les paramètres.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
+  }, [toast]);
 
-  const { data: avgTicket } = useQuery({
-    queryKey: adminSettingsKeys.avgTicket12m(),
-    queryFn: getAvgTicket12m,
-  });
-
-  if (
-    ratioLoading ||
-    pricesLoading ||
-    ratio === undefined ||
-    refPrices === undefined
-  ) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <SettingsForm
-      initialRatio={ratio}
-      initialPrices={refPrices}
-      avgTicketCents={avgTicket?.avg_ticket_cents ?? 0}
-      avgTicketSample={avgTicket?.sample_size ?? 0}
-    />
-  );
-}
-
-function SettingsForm({
-  initialRatio,
-  initialPrices,
-  avgTicketCents,
-  avgTicketSample,
-}: {
-  initialRatio: number;
-  initialPrices: QuestReferencePrices;
-  avgTicketCents: number;
-  avgTicketSample: number;
-}) {
-  const queryClient = useQueryClient();
-
-  const [ratioPct, setRatioPct] = useState(String(initialRatio));
-  const [prices, setPrices] = useState<
-    Record<keyof QuestReferencePrices, string>
-  >({
-    biere: centsToEuros(initialPrices.biere),
-    cocktail: centsToEuros(initialPrices.cocktail),
-    alcool: centsToEuros(initialPrices.alcool),
-    soft: centsToEuros(initialPrices.soft),
-    boisson_chaude: centsToEuros(initialPrices.boisson_chaude),
-    restauration: centsToEuros(initialPrices.restauration),
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async (input: {
-      ratio: number;
-      referencePrices: QuestReferencePrices;
-    }) => {
-      await Promise.all([
-        updateAdminSetting(SETTING_KEYS.QUEST_ALERT_RATIO_PCT, input.ratio),
-        updateAdminSetting(
-          SETTING_KEYS.QUEST_REFERENCE_PRICES_CENTS,
-          input.referencePrices,
-        ),
-      ]);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminSettingsKeys.all });
-      toast.success("Paramètres enregistrés");
-    },
-    onError: (err) => {
-      console.error(err);
-      toast.error("Impossible d'enregistrer les paramètres");
-    },
-  });
-
-  const handleSave = () => {
-    const ratioValue = parseInt(ratioPct, 10);
-    if (!Number.isFinite(ratioValue) || ratioValue <= 0 || ratioValue > 500) {
-      toast.error("Seuil invalide", {
+  const handleSave = async () => {
+    const ratio = parseInt(ratioPct, 10);
+    if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 500) {
+      toast({
+        variant: "destructive",
+        title: "Seuil invalide",
         description: "Le seuil doit être un entier entre 1 et 500.",
       });
       return;
@@ -156,24 +113,50 @@ function SettingsForm({
       if (raw === "") continue;
       const cents = eurosToCents(raw);
       if (cents === null) {
-        toast.error("Prix invalide", {
-          description: `Le prix de "${label}" doit être un nombre positif.`,
+        toast({
+          variant: "destructive",
+          title: "Prix invalide",
+          description: `Prix de référence pour "${label}" doit être un nombre positif.`,
         });
         return;
       }
       referencePrices[key] = cents;
     }
 
-    saveMutation.mutate({ ratio: ratioValue, referencePrices });
+    setSaving(true);
+    try {
+      await Promise.all([
+        updateAdminSetting(SETTING_KEYS.QUEST_ALERT_RATIO_PCT, ratio),
+        updateAdminSetting(SETTING_KEYS.QUEST_REFERENCE_PRICES_CENTS, referencePrices),
+      ]);
+      toast({ title: "Paramètres enregistrés" });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible d'enregistrer les paramètres.",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Paramètres</h1>
         <p className="text-muted-foreground">
-          Réglages globaux utilisés pour le calcul et la surveillance des
-          quêtes.
+          Configuration globale de l&apos;admin. Stockée dans la table{" "}
+          <code className="rounded bg-muted px-1 font-mono text-sm">admin_settings</code> (migration 020).
         </p>
       </div>
 
@@ -181,16 +164,14 @@ function SettingsForm({
         <StatCard
           title="Panier moyen 12 mois"
           icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
-          value={
-            avgTicketCents > 0 ? `${(avgTicketCents / 100).toFixed(2)} €` : "—"
-          }
-          subtitle={`${avgTicketSample} tickets pris en compte (hors comptes test)`}
+          value={avgTicket.cents > 0 ? `${(avgTicket.cents / 100).toFixed(2)} €` : "—"}
+          subtitle={`${avgTicket.sample} tickets (hors comptes test)`}
         />
         <StatCard
           title="Seuil d'alerte actuel"
           icon={<Percent className="h-4 w-4 text-muted-foreground" />}
           value={`${ratioPct} %`}
-          subtitle="Voir les quêtes signalées sur la page Santé des quêtes"
+          subtitle="Quêtes dépassant ce ratio signalées sur /quests/health"
         />
       </div>
 
@@ -198,20 +179,15 @@ function SettingsForm({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Percent className="h-5 w-5" />
-            Seuil d&apos;alerte des quêtes trop généreuses
+            Seuil d&apos;alerte ratio bonus / panier attendu
           </CardTitle>
           <CardDescription>
-            Une quête est signalée si son bonus cashback dépasse ce pourcentage
-            du montant moyen qu&apos;un joueur dépense pour la compléter. Les
-            quêtes signalées sont listées sur la page{" "}
-            <Link
-              href="/quests/health"
-              className="underline hover:text-foreground"
-            >
-              Santé des quêtes
-            </Link>
-            . Les quêtes basées sur l&apos;XP ou la complétion d&apos;autres
-            quêtes ne sont pas concernées.
+            Signaler une quête dont le bonus cashback dépasse cette fraction du montant de
+            référence (bonus &gt; ratio × montant_attendu). Appliqué sur{" "}
+            <code className="rounded bg-muted px-1 text-xs">/quests/health</code>. Les quêtes{" "}
+            <code className="rounded bg-muted px-1 text-xs">xp_earned</code> et{" "}
+            <code className="rounded bg-muted px-1 text-xs">quest_completed</code> sont exclues du
+            check.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -230,7 +206,7 @@ function SettingsForm({
             <span className="text-sm text-muted-foreground">%</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Valeur recommandée : <strong>10 %</strong>.
+            Valeur par défaut recommandée : <strong>10 %</strong>.
           </p>
         </CardContent>
       </Card>
@@ -242,9 +218,9 @@ function SettingsForm({
             Prix de référence par type de consommation
           </CardTitle>
           <CardDescription>
-            Prix moyen attendu pour un produit de chaque catégorie. Utilisés
-            pour estimer combien un joueur va dépenser sur une quête « consommer
-            N produits ». Laissez vide pour utiliser la valeur par défaut.
+            Utilisés pour calculer le montant attendu à dépenser pour compléter une quête{" "}
+            <code className="rounded bg-muted px-1 text-xs">consumption_count</code>. Montants en
+            euros, convertis automatiquement en centimes pour stockage.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -273,8 +249,8 @@ function SettingsForm({
       <Separator />
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? (
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Save className="mr-2 h-4 w-4" />

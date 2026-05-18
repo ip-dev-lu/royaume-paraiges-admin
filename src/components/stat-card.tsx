@@ -9,7 +9,6 @@ interface StatCardProps {
   subtitle?: string;
   valueClassName?: string;
   onClick?: () => void;
-  active?: boolean;
 }
 
 export function StatCard({
@@ -19,13 +18,11 @@ export function StatCard({
   subtitle,
   valueClassName,
   onClick,
-  active,
 }: StatCardProps) {
   return (
     <Card
       className={cn(
-        onClick && "cursor-pointer transition-colors hover:bg-accent",
-        active && "border-primary bg-primary/5 hover:bg-primary/10"
+        onClick && "cursor-pointer hover:bg-muted/50 transition-colors"
       )}
       onClick={onClick}
     >
