@@ -1,11 +1,25 @@
 import { createClient } from "@/lib/supabase/client";
-import { Receipt, ReceiptLine, ReceiptConsumptionItem } from "@/types/database";
+import {
+  Receipt,
+  ReceiptLine,
+  ReceiptConsumptionItem,
+  CashpadReceiptSnapshot,
+  ReconciliationStatus,
+} from "@/types/database";
 
 export interface ReceiptFilters {
   customerId?: string;
   establishmentId?: number;
   dateFrom?: string;
   dateTo?: string;
+}
+
+export interface ReceiptCashpadReconciliation {
+  status: ReconciliationStatus;
+  confidence_score: number | null;
+  time_delta_seconds: number | null;
+  manually_linked_at: string | null;
+  cashpad_snapshot: CashpadReceiptSnapshot | null;
 }
 
 export interface ReceiptWithDetails extends Receipt {
@@ -18,6 +32,7 @@ export interface ReceiptWithDetails extends Receipt {
   lines?: ReceiptLine[];
   receipt_lines?: ReceiptLine[];
   receipt_consumption_items?: ReceiptConsumptionItem[];
+  cashpad_reconciliation?: ReceiptCashpadReconciliation | null;
 }
 
 export async function getReceipts(
@@ -34,7 +49,14 @@ export async function getReceipts(
       *,
       customer:profiles!customer_id(id, email, first_name, last_name),
       receipt_lines(id, amount, payment_method),
-      receipt_consumption_items(id, consumption_type, quantity)
+      receipt_consumption_items(id, consumption_type, quantity),
+      cashpad_reconciliation:cashpad_reconciliations!cashpad_reconciliations_receipt_id_fkey(
+        status,
+        confidence_score,
+        time_delta_seconds,
+        manually_linked_at,
+        cashpad_snapshot:cashpad_receipts_snapshot!cashpad_reconciliations_cashpad_receipt_id_fkey(*)
+      )
     `,
       { count: "exact" }
     )
@@ -79,7 +101,14 @@ export async function getReceipt(
       `
       *,
       customer:profiles!customer_id(id, email, first_name, last_name),
-      receipt_consumption_items(id, consumption_type, quantity)
+      receipt_consumption_items(id, consumption_type, quantity),
+      cashpad_reconciliation:cashpad_reconciliations!cashpad_reconciliations_receipt_id_fkey(
+        status,
+        confidence_score,
+        time_delta_seconds,
+        manually_linked_at,
+        cashpad_snapshot:cashpad_receipts_snapshot!cashpad_reconciliations_cashpad_receipt_id_fkey(*)
+      )
     `
     )
     .eq("id", receiptId)

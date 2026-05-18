@@ -125,6 +125,18 @@ const formSchema = z
         path: ["targetValue"],
       });
     }
+
+    const hasReward =
+      (data.couponTemplateId && data.couponTemplateId !== NONE_TEMPLATE) ||
+      (data.bonusXp && parseInt(data.bonusXp, 10) > 0) ||
+      (data.bonusCashback && parseFloat(data.bonusCashback) > 0);
+    if (!hasReward) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Configurez au moins une récompense (coupon, XP, ou cashback).",
+        path: ["bonusXp"],
+      });
+    }
   });
 
 export type QuestFormInput = z.infer<typeof formSchema>;

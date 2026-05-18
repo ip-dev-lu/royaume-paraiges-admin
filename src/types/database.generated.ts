@@ -1026,6 +1026,7 @@ export type Database = {
           title_en: string
           title_fr: string
           updated_at: string | null
+          version: string
         }
         Insert: {
           content_en?: string
@@ -1039,6 +1040,7 @@ export type Database = {
           title_en?: string
           title_fr?: string
           updated_at?: string | null
+          version?: string
         }
         Update: {
           content_en?: string
@@ -1052,6 +1054,7 @@ export type Database = {
           title_en?: string
           title_fr?: string
           updated_at?: string | null
+          version?: string
         }
         Relationships: []
       }
@@ -1207,49 +1210,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "news"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      notes: {
-        Row: {
-          created_at: string
-          customer_id: string
-          id: number
-          note: number
-        }
-        Insert: {
-          created_at?: string
-          customer_id?: string
-          id?: number
-          note: number
-        }
-        Update: {
-          created_at?: string
-          customer_id?: string
-          id?: number
-          note?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notes_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "user_stats"
-            referencedColumns: ["customer_id"]
           },
         ]
       }
@@ -2212,6 +2172,36 @@ export type Database = {
           },
         ]
       }
+      user_legal_consents: {
+        Row: {
+          accepted_at: string
+          document_slug: string
+          id: string
+          ip_address: unknown
+          user_agent: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          document_slug: string
+          id?: string
+          ip_address?: unknown
+          user_agent?: string | null
+          user_id: string
+          version: string
+        }
+        Update: {
+          accepted_at?: string
+          document_slug?: string
+          id?: string
+          ip_address?: unknown
+          user_agent?: string | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       avg_ticket_12m: {
@@ -2486,26 +2476,16 @@ export type Database = {
         Returns: Json
       }
       create_weekly_coupon: { Args: { p_customer_id: string }; Returns: Json }
-      credit_bonus_cashback:
-        | {
-            Args: {
-              p_amount: number
-              p_coupon_id?: number
-              p_customer_id: string
-              p_period_identifier?: string
-              p_source_type?: string
-            }
-            Returns: number
-          }
-        | {
-            Args: {
-              p_amount: number
-              p_coupon_id: number
-              p_customer_id: string
-              p_source_type?: string
-            }
-            Returns: number
-          }
+      credit_bonus_cashback: {
+        Args: {
+          p_amount: number
+          p_coupon_id?: number
+          p_customer_id: string
+          p_period_identifier?: string
+          p_source_type?: string
+        }
+        Returns: number
+      }
       distribute_all_quest_rewards: {
         Args: { p_admin_id?: string }
         Returns: Json
@@ -2564,6 +2544,24 @@ export type Database = {
       }
       get_coupon_stats: { Args: never; Returns: Json }
       get_current_user_role: { Args: never; Returns: string }
+      get_current_xp_leaderboard: {
+        Args: { p_limit?: number; p_offset?: number; p_period_type: string }
+        Returns: {
+          customer_id: string
+          establishment_count: number
+          rank: number
+          receipt_count: number
+          total_count: number
+          total_xp: number
+        }[]
+      }
+      get_current_xp_rank: {
+        Args: { p_customer_id: string; p_period_type: string }
+        Returns: {
+          rank: number
+          total_xp: number
+        }[]
+      }
       get_customer_available_coupons: {
         Args: { p_customer_id: string }
         Returns: {
@@ -2611,6 +2609,14 @@ export type Database = {
         Args: { p_period_type: string }
         Returns: string
       }
+      get_public_user_xp: { Args: { p_customer_id: string }; Returns: number }
+      get_public_xp_leaderboard: {
+        Args: { p_limit?: number }
+        Returns: {
+          customer_id: string
+          total_xp: number
+        }[]
+      }
       get_season_rank_from_level: { Args: { p_level: number }; Returns: Json }
       get_season_xp: { Args: { p_customer_id: string }; Returns: number }
       get_unseen_badges: {
@@ -2628,6 +2634,7 @@ export type Database = {
           user_badge_id: number
         }[]
       }
+      get_unspent_cashback_total: { Args: never; Returns: number }
       get_user_badges: {
         Args: { p_customer_id: string }
         Returns: {
@@ -2910,4 +2917,3 @@ export const Constants = {
     },
   },
 } as const
-

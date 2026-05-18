@@ -402,24 +402,15 @@ export async function getDailyRevenueStats(
 }
 
 /**
- * Get total unspent cashback across all users.
- * Queries the user_stats materialized view (cashback_available = earned - spent).
- * Returns amount in centimes.
+ * Total cashback non dépensé tous users (centimes).
+ * Passe par la RPC admin get_unspent_cashback_total (matview user_stats fermée).
+ * La RPC exclut elle-même les profils is_test.
  */
 export async function getUnspentCashbackTotal(): Promise<number> {
   const supabase = createClient();
-  const testIds = await getTestUserIds();
-  type StatsRow = { cashback_available: number | string | null };
-  let query = supabase.from("user_stats").select("cashback_available");
-
-  if (testIds.length > 0) query = query.not("customer_id", "in", `(${testIds.join(",")})`);
-
-  const { data, error } = await query;
+  const { data, error } = await (supabase.rpc as any)("get_unspent_cashback_total");
   if (error) throw error;
-  return ((data || []) as StatsRow[]).reduce(
-    (sum, row) => sum + (Number(row.cashback_available) || 0),
-    0
-  );
+  return Number(data) || 0;
 }
 
 // =============================================================================

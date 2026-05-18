@@ -27,7 +27,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Receipt, TrendingUp } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  HelpCircle,
+  Loader2,
+  Receipt,
+  TrendingUp,
+} from "lucide-react";
 import {
   getReceipts,
   getReceiptStats,
@@ -37,6 +51,7 @@ import {
 import { getEstablishments, type Establishment } from "@/lib/services/contentService";
 import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { getPaymentMethodConfig } from "@/lib/payment-methods";
+import type { ReconciliationStatus } from "@/types/database";
 
 function startOfCurrentMonthIso(): string {
   const d = new Date();
@@ -55,6 +70,268 @@ const consumptionTypeLabels: Record<string, string> = {
   restauration: "Restauration",
 };
 
+function ReconciliationBadge({ status }: { status: ReconciliationStatus }) {
+  if (status === "matched") {
+    return (
+      <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400">
+        <CheckCircle2 className="mr-1 h-3 w-3" />
+        Réconcilié
+      </Badge>
+    );
+  }
+  if (status === "orphan_royaume") {
+    return (
+      <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400">
+        <AlertTriangle className="mr-1 h-3 w-3" />
+        Orphelin
+      </Badge>
+    );
+  }
+  if (status === "excluded_cashback") {
+    return (
+      <Badge className="bg-slate-500/15 text-slate-700 hover:bg-slate-500/20 dark:text-slate-300">
+        100% PdB
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-violet-500/15 text-violet-700 hover:bg-violet-500/20 dark:text-violet-400">
+      <HelpCircle className="mr-1 h-3 w-3" />
+      Ambigu
+    </Badge>
+  );
+}
+
+function ReceiptDetailsDialog({
+  receipt,
+  establishmentName,
+  onClose,
+}: {
+  receipt: ReceiptWithDetails | null;
+  establishmentName: string;
+  onClose: () => void;
+}) {
+  const open = receipt !== null;
+  if (!receipt) {
+    return (
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent />
+      </Dialog>
+    );
+  }
+  const reconciliation = receipt.cashpad_reconciliation ?? null;
+  const snap = reconciliation?.cashpad_snapshot ?? null;
+  const customerLabel = receipt.customer
+    ? `${receipt.customer.first_name || ""} ${
+        receipt.customer.last_name || ""
+      }`.trim() || receipt.customer.email
+    : "Inconnu";
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            Ticket #{receipt.id}
+            {reconciliation && <ReconciliationBadge status={reconciliation.status} />}
+          </DialogTitle>
+          <DialogDescription>
+            {formatDateTime(receipt.created_at)} · {establishmentName}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          <section className="space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+              Ticket Royaume
+            </h3>
+            <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/20 p-3 text-sm">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Client
+                </div>
+                <Link
+                  href={`/users/${receipt.customer_id}`}
+                  className="hover:underline"
+                >
+                  {customerLabel}
+                </Link>
+              </div>
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Montant
+                </div>
+                <div className="tabular-nums">{formatCurrency(receipt.amount)}</div>
+              </div>
+              <div className="col-span-2">
+                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Paiement
+                </div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {receipt.receipt_lines && receipt.receipt_lines.length > 0 ? (
+                    receipt.receipt_lines.map((line) => {
+                      const config = getPaymentMethodConfig(line.payment_method);
+                      return (
+                        <Badge
+                          key={line.id}
+                          variant="outline"
+                          className={cn("flex items-center gap-1", config.badgeClass)}
+                        >
+                          {config.icon}
+                          {config.label} · {formatCurrency(line.amount)}
+                        </Badge>
+                      );
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </div>
+              </div>
+              {receipt.receipt_consumption_items &&
+                receipt.receipt_consumption_items.length > 0 && (
+                  <div className="col-span-2">
+                    <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Consommations (saisies)
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {receipt.receipt_consumption_items.map((item) => (
+                        <Badge key={item.id} variant="outline">
+                          {item.quantity}x{" "}
+                          {consumptionTypeLabels[item.consumption_type] ||
+                            item.consumption_type}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          </section>
+
+          {reconciliation ? (
+            snap ? (
+              <>
+                <section className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Ticket Cashpad
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/20 p-3 text-sm">
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Horodatage
+                      </div>
+                      <div>{formatDateTime(snap.closed_at)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Montant
+                      </div>
+                      <div className="tabular-nums">
+                        {formatCurrency(snap.amount_cents)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Serveur
+                      </div>
+                      <div>{snap.cashpad_user_name ?? "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Sequential ID
+                      </div>
+                      <div>{snap.cashpad_sequential_id ?? "—"}</div>
+                    </div>
+                    {reconciliation.confidence_score !== null && (
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Confiance
+                        </div>
+                        <div className="tabular-nums">
+                          {reconciliation.confidence_score}%
+                        </div>
+                      </div>
+                    )}
+                    {reconciliation.manually_linked_at && (
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Lien manuel
+                        </div>
+                        <div>{formatDate(reconciliation.manually_linked_at)}</div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {snap.products && snap.products.length > 0 && (
+                  <section className="space-y-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      Produits Cashpad ({snap.products.length})
+                    </h3>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-12">Qté</TableHead>
+                            <TableHead>Produit</TableHead>
+                            <TableHead>Catégorie</TableHead>
+                            <TableHead className="text-right">PU</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {snap.products.map((p, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="tabular-nums">{p.qty}</TableCell>
+                              <TableCell>{p.name}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {p.category ?? "—"}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {formatCurrency(p.price_cents)}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {formatCurrency(p.price_cents * p.qty)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </section>
+                )}
+              </>
+            ) : (
+              <section className="space-y-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Ticket Cashpad
+                </h3>
+                <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                  {reconciliation.status === "orphan_royaume"
+                    ? "Aucun ticket Cashpad trouvé pour ce receipt (orphan)."
+                    : reconciliation.status === "excluded_cashback"
+                      ? "Paiement 100% PdB — hors scope Cashpad."
+                      : reconciliation.status === "ambiguous"
+                        ? "Plusieurs candidats Cashpad — arbitrage manuel nécessaire."
+                        : "Pas de ticket Cashpad associé."}
+                </div>
+              </section>
+            )
+          ) : (
+            <section className="space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Ticket Cashpad
+              </h3>
+              <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                Réconciliation non encore exécutée pour ce ticket.
+              </div>
+            </section>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<ReceiptWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +339,9 @@ export default function ReceiptsPage() {
   const [page, setPage] = useState(0);
   const [filters, setFilters] = useState<ReceiptFilters>({});
   const [establishments, setEstablishments] = useState<Establishment[]>([]);
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptWithDetails | null>(
+    null
+  );
   const [stats, setStats] = useState<{
     totalReceipts: number;
     totalRevenue: number;
@@ -321,12 +601,22 @@ export default function ReceiptsPage() {
                     const amountConfig = dominantMethod
                       ? getPaymentMethodConfig(dominantMethod)
                       : null;
+                    const reconciliation = receipt.cashpad_reconciliation ?? null;
                     return (
-                    <TableRow key={receipt.id}>
+                    <TableRow
+                      key={receipt.id}
+                      onClick={() => setSelectedReceipt(receipt)}
+                      className="cursor-pointer hover:bg-muted/40"
+                    >
                       <TableCell className="font-mono text-sm">
-                        #{receipt.id}
+                        <div className="flex items-center gap-2">
+                          #{receipt.id}
+                          {reconciliation && (
+                            <ReconciliationBadge status={reconciliation.status} />
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div>
                           <Link
                             href={`/users/${receipt.customer_id}`}
@@ -433,6 +723,16 @@ export default function ReceiptsPage() {
         </CardContent>
       </Card>
       </div>
+
+      <ReceiptDetailsDialog
+        receipt={selectedReceipt}
+        establishmentName={
+          selectedReceipt
+            ? getEstablishmentName(selectedReceipt.establishment_id)
+            : ""
+        }
+        onClose={() => setSelectedReceipt(null)}
+      />
     </div>
   );
 }

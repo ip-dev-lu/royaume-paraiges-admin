@@ -558,22 +558,21 @@ export async function getUserFullStats(userId: string): Promise<{
     cashback_spent: number | string;
   };
 
-  type LeaderboardRow = {
-    customer_id: string;
-    rank: number | string;
-  };
+  type RankRow = { rank: number | string; total_xp: number | string };
 
   const [statsResult, weeklyResult, monthlyResult, yearlyResult] = await Promise.all([
-    supabase.from("user_stats").select("*").eq("customer_id", userId).single(),
-    supabase.from("weekly_xp_leaderboard").select("customer_id, rank").eq("customer_id", userId).single(),
-    supabase.from("monthly_xp_leaderboard").select("customer_id, rank").eq("customer_id", userId).single(),
-    supabase.from("yearly_xp_leaderboard").select("customer_id, rank").eq("customer_id", userId).single(),
+    // RPCs sécurisées (matviews fermées). get_user_stats vérifie le rôle admin/employee.
+    (supabase.rpc as any)("get_user_stats", { p_customer_id: userId }),
+    (supabase.rpc as any)("get_current_xp_rank", { p_period_type: "weekly", p_customer_id: userId }),
+    (supabase.rpc as any)("get_current_xp_rank", { p_period_type: "monthly", p_customer_id: userId }),
+    (supabase.rpc as any)("get_current_xp_rank", { p_period_type: "yearly", p_customer_id: userId }),
   ]);
 
-  const userStats = statsResult.data as UserStatsRow | null;
-  const weeklyRank = (weeklyResult.data as LeaderboardRow | null)?.rank;
-  const monthlyRank = (monthlyResult.data as LeaderboardRow | null)?.rank;
-  const yearlyRank = (yearlyResult.data as LeaderboardRow | null)?.rank;
+  const statsRows = Array.isArray(statsResult.data) ? (statsResult.data as UserStatsRow[]) : [];
+  const userStats: UserStatsRow | null = statsRows[0] ?? null;
+  const weeklyRank = (weeklyResult.data as RankRow[] | null)?.[0]?.rank;
+  const monthlyRank = (monthlyResult.data as RankRow[] | null)?.[0]?.rank;
+  const yearlyRank = (yearlyResult.data as RankRow[] | null)?.[0]?.rank;
 
   return {
     totalXp: Number(userStats?.total_xp) || 0,
