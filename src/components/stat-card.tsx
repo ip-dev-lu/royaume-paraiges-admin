@@ -24,6 +24,7 @@ export function StatCard({
   return (
     <Card
       className={cn(
+        "w-full max-w-[350px]",
         onClick && "cursor-pointer transition-colors hover:bg-accent",
         active && "border-primary bg-primary/5 hover:bg-primary/10"
       )}
