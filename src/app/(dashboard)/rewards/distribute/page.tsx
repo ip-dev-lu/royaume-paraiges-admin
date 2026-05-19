@@ -143,8 +143,8 @@ export default function DistributePage() {
           .in("id", ids);
 
         const map: Record<string, CustomerInfo> = {};
-        (profiles || []).forEach((p) => {
-          map[p.id] = p as CustomerInfo;
+        ((profiles ?? []) as CustomerInfo[]).forEach((p) => {
+          map[p.id] = p;
         });
         setCustomers(map);
       }
